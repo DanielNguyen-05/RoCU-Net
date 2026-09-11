@@ -13,7 +13,7 @@ from ocu_net.utils import autocast_context, get_device
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Predict polyp masks with CRS-OCU-Net")
+    parser = argparse.ArgumentParser(description="Predict polyp masks with RoCU-Net")
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--input", required=True, help="Image file or directory")
     parser.add_argument("--output", default="predictions")

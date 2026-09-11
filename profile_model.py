@@ -13,7 +13,7 @@ from ocu_net.utils import get_device, save_json
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Profile OCU/CRS-OCU efficiency")
+    parser = argparse.ArgumentParser(description="Profile RoCU efficiency")
     parser.add_argument("--config", default="configs/kvasir.yaml")
     parser.add_argument("--checkpoint", default=None)
     parser.add_argument("--device", default="auto", choices=["auto", "cuda", "mps", "cpu"])
