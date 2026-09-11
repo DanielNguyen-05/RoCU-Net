@@ -11,3 +11,4 @@ venv/
 dataset/
 runs/*
 !runs/.gitkeep
+figures/*
