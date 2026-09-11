@@ -1,0 +1,1 @@
+Training and validation curves from history.csv; best validation Dice at epoch 197. Values extracted from history CSV. No smoothing. This figure does not measure test performance.

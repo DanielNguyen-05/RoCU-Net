@@ -57,7 +57,7 @@ def batch_metrics(
     boundary_f1 = _safe_ratio(
         2.0 * boundary_precision * boundary_recall,
         boundary_precision + boundary_recall,
-        1.0,
+        0.0,
     )
 
     return {

@@ -289,3 +289,113 @@ controlled Kvasir/CVC comparison, retrain both with this version; avoid resuming
 an old run if you need an unchanged training objective. Evaluation metrics are
 computed at the configured resized resolution; `predict.py` exports masks at
 the original resolution.
+
+## 10. CVC-ColonDB and ETIS
+
+Both new local datasets use `images/` and `masks/` with matching filename stems.
+The checked directories contain 380 ColonDB pairs and 196 ETIS pairs.
+
+```bash
+python scripts/check_dataset.py --config configs/cvc_colondb.yaml
+python scripts/check_dataset.py --config configs/etis.yaml
+python train.py --config configs/cvc_colondb.yaml --device cuda
+python train.py --config configs/etis.yaml --device cuda
+```
+
+The configs inherit the model, image size, augmentation and training settings
+from `kvasir.yaml`. They create separate runs:
+
+| Config | Run | Train / validation / test |
+|---|---|---|
+| `cvc_colondb.yaml` | `runs/rocu_cvc_colondb_seed42` | 304 / 38 / 38 |
+| `etis.yaml` | `runs/rocu_etis_seed42` | 156 / 19 / 21 |
+
+These are **within-dataset random image splits**. Training on ColonDB/ETIS and
+then testing their held-out subsets answers a different question from testing
+a Kvasir-trained model on all ColonDB/ETIS images. Do not describe a model
+trained on those datasets as unseen-dataset generalization.
+
+```bash
+python evaluate.py --checkpoint runs/rocu_cvc_colondb_seed42/best.pt --save-predictions --device cuda
+python evaluate.py --checkpoint runs/rocu_etis_seed42/best.pt --save-predictions --device cuda
+```
+
+## 11. Paper figures for RoCU-Net
+
+`visualize.py` exports 300-dpi PNG and PDF figures, English captions, exact
+sample IDs, all per-image metrics and checkpoint/protocol metadata. It uses
+checkpoint weights without downloading pretrained weights. No training is
+performed by this command.
+
+```bash
+python visualize.py \
+  --checkpoint runs/crs_ocu_kvasir_seed42/best.pt \
+  --data-root dataset/Kvasir-SEG \
+  --output figures/kvasir --device cuda
+  # --selection best # mặc định là phân bố đều (1 mẫu khó nhất 1 mẫu ở khoảng 25%, 1 mẫu trung vị, 1 mẫu ở khoảng 75%, 1 mẫu tốt nhất)
+  # - num-samples 5
+```
+
+Copy the original `splits/` directory alongside `best.pt` when moving a run.
+The visualization command requires those manifests and never regenerates an
+in-dataset split. `--data-root` can relocate the data. All images are evaluated
+at the checkpoint's configured input resolution with its fixed threshold.
+
+Outputs:
+
+- `qualitative_01.{png,pdf}`: input, ground truth, prediction, contour detail,
+  pixel errors and foreground probability. The input rectangle identifies the
+  contour crop. TP is green, FP orange, FN purple; contour GT is blue and
+  prediction orange. These highlight accurate boundaries and reveal failures.
+- `mechanism_01.{png,pdf}`: auxiliary boundary, stage-2 soft routing gate,
+  actual solver-active parent cells, and absolute occupancy conservation error.
+  These illustrate the architecture's behavior; gate values are not calibrated
+  uncertainty and skip fractions do not establish measured speedup.
+- `metric_distribution.{png,pdf}`: Dice/IoU/boundary-F1 distributions, Dice versus
+  target area and a Dice histogram over **all evaluated images**.
+- `per_image_metrics.csv`, `selected_samples.csv`, `figure_metadata.json` and
+  `captions.txt`: values and provenance needed to reproduce and describe figures.
+- `training_curves.{png,pdf}` when the run contains `history.csv`.
+
+The default six rows cover evenly spaced **Dice ranks from worst to best**.
+This avoids silently presenting only successful cases. Use `--selection best`
+for an explicitly labeled illustrative success panel, `--selection worst` for
+failure analysis, or `--selection random --seed 42`. Use `--sample-ids ID1 ID2`
+to lock the same cases across future runs. Keep the distribution plot alongside
+selected examples. Requests longer than six rows are paginated.
+
+For a separately trained dataset, substitute its checkpoint. For external
+all-image evaluation of a Kvasir checkpoint:
+
+```bash
+python visualize.py --checkpoint runs/crs_ocu_kvasir_seed42/best.pt \
+  --external-config configs/cvc_colondb.yaml --output figures/kvasir_to_colondb --device cuda
+python visualize.py --checkpoint runs/crs_ocu_kvasir_seed42/best.pt \
+  --external-config configs/etis.yaml --output figures/kvasir_to_etis --device cuda
+```
+
+Here `--external-config` supplies only the target data paths; model settings,
+input size and threshold remain those of the source checkpoint. No target
+splits are created. Ensure the target images were not used in training before
+calling this unseen-dataset evaluation.
+
+Export training curves from available logs without a checkpoint:
+
+```bash
+python visualize.py --history logs/RoCUNet_Kvasir.log --output figures/kvasir_history
+```
+
+This figure has already been generated locally. Logged values are rounded;
+prefer `history.csv` for full precision. Curves are unsmoothed. No actual
+checkpoint or saved prediction masks were present when this tool was added,
+so qualitative model results still require your trained checkpoint.
+
+For the paper, use qualitative segmentation and the full-split distribution
+to show quality; pair the mechanism maps with controlled ablations and measured
+latency/FPS to substantiate conservation and efficiency. A single model's maps
+cannot establish superiority over baselines.
+
+Metric correction in this update: boundary F1 now returns 0 when both boundary
+precision and recall are 0 (disjoint contours). The earlier code returned 1
+in that case. Re-evaluate old checkpoints before reporting boundary F1; Dice
+and IoU calculations are unchanged.
