@@ -1,0 +1,13 @@
+base_config: kvasir.yaml
+
+experiment:
+  name: rocu_etis_seed42
+
+data:
+  root: dataset/ETIS
+  image_dir: images
+  mask_dir: masks
+  # Within-dataset random image split, not an external generalization test.
+  train_ratio: 0.80
+  val_ratio: 0.10
+  test_ratio: 0.10

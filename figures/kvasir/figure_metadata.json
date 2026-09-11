@@ -1,0 +1,54 @@
+{
+  "checkpoint": "/Users/dangnguyen/Desktop/RoCU-Net/runs/crs_ocu_kvasir_seed42/best.pt",
+  "checkpoint_sha256": "53598bb81bd07f668c5533371724b05033a5e6d2086db92e58eafeb0f97d4d61",
+  "checkpoint_epoch": 197,
+  "protocol": "test split",
+  "external_config": null,
+  "selection": "quantiles",
+  "selected_ids": [
+    "cju2uzabhs6er0993x3aaf87p",
+    "cju2rlqdnoz9k0993cpjae3x0",
+    "cju85qefyln6v0850szeb9byi",
+    "cju0s690hkp960855tjuaqvv0",
+    "cju42dwedlmk60871jbgu4ehi"
+  ],
+  "selection_seed": 42,
+  "image_size": [
+    320,
+    320
+  ],
+  "threshold": 0.5,
+  "amp": false,
+  "device": "cpu",
+  "n_images": 100,
+  "mean": {
+    "dice": 0.9029779893159866,
+    "iou": 0.8360612273216248,
+    "precision": 0.9108783540129661,
+    "recall": 0.913830885887146,
+    "specificity": 0.9837479948997497,
+    "accuracy": 0.9712215834856033,
+    "f2": 0.9070311579108238,
+    "mae": 0.02890918997931294,
+    "boundary_f1": 0.6937444809079171,
+    "foreground_fraction": 0.14636328095570206,
+    "occupancy_mae_stage2": 5.045947310336474e-10,
+    "occupancy_mae_stage1": 7.088744648220401e-10,
+    "solver_active_fraction_stage2": 0.015565624936134554
+  },
+  "std": {
+    "dice": 0.10034388668549948,
+    "iou": 0.1422621598469182,
+    "precision": 0.11945126394541919,
+    "recall": 0.1112221489472546,
+    "specificity": 0.027485535959132664,
+    "accuracy": 0.03831124951773854,
+    "f2": 0.10102946534763153,
+    "mae": 0.03813807228801164,
+    "boundary_f1": 0.19439080717857193,
+    "foreground_fraction": 0.11751829589728197,
+    "occupancy_mae_stage2": 4.0698439953186037e-10,
+    "occupancy_mae_stage1": 6.381865775901984e-10,
+    "solver_active_fraction_stage2": 0.01763158040245385
+  }
+}
