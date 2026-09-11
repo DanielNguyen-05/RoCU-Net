@@ -1,1 +1,0 @@
-Training and validation curves from RoCUNet_Kvasir.log; best validation Dice at epoch 197. Values extracted from rounded console logs. No smoothing. This figure does not measure test performance.
