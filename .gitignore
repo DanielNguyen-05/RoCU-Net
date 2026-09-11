@@ -8,9 +8,6 @@ __pycache__/
 venv/
 
 # Data and experiment artifacts
-dataset/Kvasir/images/
-dataset/Kvasir/masks/
-dataset/Kvasir/Kvasir-SEG/
-dataset/ToyKvasir/
+dataset/
 runs/*
 !runs/.gitkeep

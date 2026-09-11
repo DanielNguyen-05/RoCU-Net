@@ -1,5 +1,5 @@
 experiment:
-  name: ocu_net_kvasir_seed42
+  name: crs_ocu_kvasir_seed42
   output_dir: runs
   seed: 42
   deterministic: false
@@ -8,7 +8,10 @@ data:
   root: dataset/Kvasir
   image_dir: images
   mask_dir: masks
-  image_size: [352, 352]
+
+  # image_size: [256, 256]
+  image_size: [320, 320]
+
   train_ratio: 0.80
   val_ratio: 0.10
   test_ratio: 0.10
@@ -17,34 +20,58 @@ data:
   persistent_workers: true
 
 model:
-  architecture: ocu_net
+  architecture: crs_ocu_net
   in_channels: 3
-  encoder_channels: [16, 32, 64, 128, 256]
-  guide_channels: 8
+  backbone: mobilenet_v3_large
+  pretrained: true
+  backbone_channels: [16, 24, 40, 80]
+  backbone_depths: [1, 2, 2, 2]
+
+  # decoder_channels: [64, 48]
+  # carrier_channels: 24
+  # shallow_guide_channels: 16
+  decoder_channels: [80, 56]
+  carrier_channels: 32
+  shallow_guide_channels: 24
+
   ocu_solver_iterations: 24
   ocu_epsilon: 1.0e-6
+  routing_enabled: true
+  hard_routing_inference: true
+
+  # routing_uncertainty_threshold: 0.20
+  routing_uncertainty_threshold: 0.10
+  
+  use_semantic_carrier: true
 
 training:
-  epochs: 150
+  epochs: 250
   batch_size: 8
   eval_batch_size: 8
   optimizer: adamw
-  learning_rate: 3.0e-4
+  learning_rate: 5.0e-4
+  backbone_lr_multiplier: 0.20
   weight_decay: 1.0e-4
   scheduler: cosine
+  warmup_epochs: 5
+  warmup_start_factor: 0.10
   min_learning_rate: 1.0e-6
   amp: true
   grad_clip_norm: 1.0
-  early_stopping_patience: 30
+  early_stopping_patience: 45
   threshold: 0.50
   test_after_training: true
   save_test_predictions: true
 
 loss:
-  bce_weight: 1.0
-  dice_weight: 1.0
-  p176_weight: 0.50
-  p88_weight: 0.25
+  bce_weight: 0.50
+  dice_weight: 1.00
+  p176_weight: 0.40
+  p88_weight: 0.20
+  structure_weight: 0.50
+  boundary_weight: 0.25
+  routing_weight: 0.05
+  boundary_kernel_size: 5
 
 augmentation:
   horizontal_flip_probability: 0.50
@@ -52,12 +79,13 @@ augmentation:
   rotate_90_probability: 0.50
   small_rotation_probability: 0.30
   max_rotation_degrees: 15
-  color_jitter_probability: 0.50
-  brightness: 0.15
-  contrast: 0.15
-  saturation: 0.10
+  color_jitter_probability: 0.60
+  brightness: 0.20
+  contrast: 0.20
+  saturation: 0.15
 
 profiling:
   batch_size: 1
   warmup_iterations: 30
   benchmark_iterations: 100
+
