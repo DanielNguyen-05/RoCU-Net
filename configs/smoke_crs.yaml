@@ -1,0 +1,27 @@
+base_config: kvasir_crs_offline.yaml
+experiment:
+  name: smoke_crs
+data:
+  root: dataset/ToyKvasir
+  image_size: [64, 64]
+  num_workers: 0
+  pin_memory: false
+  persistent_workers: false
+model:
+  backbone_channels: [8, 12, 16, 24]
+  backbone_depths: [1, 1, 1, 1]
+  decoder_channels: [20, 16]
+  carrier_channels: 8
+  shallow_guide_channels: 8
+  ocu_solver_iterations: 16
+training:
+  epochs: 1
+  batch_size: 2
+  eval_batch_size: 2
+  warmup_epochs: 0
+  early_stopping_patience: 1
+profiling:
+  batch_size: 1
+  warmup_iterations: 1
+  benchmark_iterations: 2
+

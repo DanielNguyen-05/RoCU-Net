@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crs-ocu-net"
+version = "1.0.0"
+description = "Confidence-Routed Semantic Occupancy upsampling for lightweight polyp segmentation"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "torch>=2.2",
+  "torchvision>=0.17",
+  "numpy>=1.24",
+  "Pillow>=10.0",
+  "PyYAML>=6.0",
+  "pandas>=2.0",
+  "matplotlib>=3.7",
+  "tqdm>=4.66",
+]
+
+[tool.setuptools.packages.find]
+include = ["ocu_net*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

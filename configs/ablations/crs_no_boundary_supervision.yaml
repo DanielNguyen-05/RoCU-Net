@@ -1,0 +1,8 @@
+base_config: ../kvasir_crs.yaml
+experiment:
+  name: ablation_crs_no_boundary_supervision_seed42
+loss:
+  boundary_weight: 0.0
+  routing_weight: 0.0
+  structure_weight: 0.0
+

@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.idea/
+.vscode/
+.DS_Store
+.venv/
+venv/
+
+# Data and experiment artifacts
+dataset/Kvasir/images/
+dataset/Kvasir/masks/
+dataset/Kvasir/Kvasir-SEG/
+dataset/ToyKvasir/
+runs/*
+!runs/.gitkeep
