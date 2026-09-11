@@ -8,7 +8,7 @@ from pathlib import Path
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run CRS-OCU-Net with several random seeds")
-    parser.add_argument("--config", default="configs/kvasir_crs.yaml")
+    parser.add_argument("--config", default="configs/kvasir.yaml")
     parser.add_argument("--seeds", type=int, nargs="+", default=[13, 42, 87])
     parser.add_argument("--data-root", default=None)
     parser.add_argument("--device", default="auto", choices=["auto", "cuda", "mps", "cpu"])

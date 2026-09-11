@@ -1,4 +1,4 @@
-base_config: ../kvasir_crs.yaml
+base_config: ../kvasir.yaml
 experiment:
   name: ablation_crs_no_boundary_supervision_seed42
 loss:

@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 DEFAULT_CONFIGS = (
-    "configs/kvasir_crs.yaml",
+    "configs/kvasir.yaml",
     "configs/ablations/crs_no_routing.yaml",
     "configs/ablations/crs_no_semantic_carrier.yaml",
     "configs/ablations/crs_no_boundary_supervision.yaml",

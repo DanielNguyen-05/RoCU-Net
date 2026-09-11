@@ -50,7 +50,7 @@ def discover_pairs(root: str | Path, image_dir: str = "images", mask_dir: str = 
             break
     if selected is None:
         raise FileNotFoundError(
-            "Kvasir-SEG was not found. Expected '<root>/images' and '<root>/masks' "
+            f"Dataset was not found. Expected {image_dir!r} and {mask_dir!r} "
             f"under: {root}"
         )
     images, masks = selected
@@ -63,7 +63,7 @@ def discover_pairs(root: str | Path, image_dir: str = "images", mask_dir: str = 
     missing_images = sorted(mask_index.keys() - image_index.keys())
     if missing_masks or missing_images:
         raise RuntimeError(
-            f"Unpaired Kvasir files: {len(missing_masks)} image(s) without masks and "
+            f"Unpaired dataset files: {len(missing_masks)} image(s) without masks and "
             f"{len(missing_images)} mask(s) without images."
         )
     return [SamplePair(key, image_index[key], mask_index[key]) for key in common]
@@ -189,7 +189,7 @@ class JointTransform:
         return image_tensor, mask_tensor
 
 
-class KvasirSegDataset(Dataset):
+class PolypSegDataset(Dataset):
     def __init__(self, pairs: list[SamplePair], transform: JointTransform):
         self.pairs = pairs
         self.transform = transform
@@ -207,6 +207,10 @@ class KvasirSegDataset(Dataset):
         return {"image": image_tensor, "mask": mask_tensor, "id": pair.sample_id}
 
 
+# Backward-compatible import for existing Kvasir experiments.
+KvasirSegDataset = PolypSegDataset
+
+
 def build_dataloaders(
     config: dict,
     splits: dict[str, list[SamplePair]],
@@ -216,15 +220,15 @@ def build_dataloaders(
     data_cfg = config["data"]
     train_cfg = config["training"]
     image_size = tuple(int(v) for v in data_cfg["image_size"])
-    train_dataset = KvasirSegDataset(
+    train_dataset = PolypSegDataset(
         splits["train"],
         JointTransform(image_size, config.get("augmentation"), train=training),
     )
     eval_transform = JointTransform(image_size, train=False)
     datasets = {
         "train": train_dataset,
-        "val": KvasirSegDataset(splits["val"], eval_transform),
-        "test": KvasirSegDataset(splits["test"], eval_transform),
+        "val": PolypSegDataset(splits["val"], eval_transform),
+        "test": PolypSegDataset(splits["test"], eval_transform),
     }
     workers = int(data_cfg.get("num_workers", 4))
     generator = torch.Generator().manual_seed(int(config["experiment"]["seed"]))

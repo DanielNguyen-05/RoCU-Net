@@ -44,4 +44,28 @@ def test_ablation_config_inherits_base_settings():
     config = load_config(project_root / "configs/ablations/crs_no_routing.yaml")
     assert config["model"]["architecture"] == "crs_ocu_net"
     assert config["model"]["routing_enabled"] is False
-    assert config["data"]["image_size"] == [256, 256]
+    assert config["data"]["image_size"] == load_config(project_root / "configs/kvasir.yaml")["data"]["image_size"]
+
+
+def test_clinicdb_png_and_tif(tmp_path):
+    from ocu_net.data import PolypSegDataset
+
+    for folder, extension in (("PNG", ".png"), ("TIF", ".tif")):
+        root = tmp_path / folder
+        (root / "Original").mkdir(parents=True)
+        (root / "Ground Truth").mkdir()
+        for index in range(10):
+            Image.new("RGB", (48, 32), (120, 80, 60)).save(root / "Original" / f"{index}{extension}")
+            mask = np.zeros((32, 48), dtype=np.uint8)
+            mask[8:24, 12:36] = 255
+            Image.fromarray(mask).save(root / "Ground Truth" / f"{index}{extension}")
+        kwargs = dict(image_dir="Original", mask_dir="Ground Truth")
+        splits = create_or_load_splits(root, tmp_path / f"splits_{folder}", **kwargs)
+        ids = [{p.sample_id for p in splits[name]} for name in ("train", "val", "test")]
+        assert list(map(len, ids)) == [8, 1, 1]
+        assert not (ids[0] & ids[1] or ids[0] & ids[2] or ids[1] & ids[2])
+        reused = create_or_load_splits(root, tmp_path / f"splits_{folder}", seed=99, **kwargs)
+        assert splits == reused
+        sample = PolypSegDataset(splits["train"], JointTransform((32, 32)))[0]
+        assert sample["image"].shape == (3, 32, 32)
+        assert set(sample["mask"].unique().tolist()) == {0.0, 1.0}

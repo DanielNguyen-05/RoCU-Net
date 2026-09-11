@@ -80,7 +80,9 @@ def main() -> None:
     checkpoint = load_checkpoint(checkpoint_path)
     config = checkpoint["config"]
     device = get_device(args.device)
-    model = build_model(config).to(device)
+    # The checkpoint already contains encoder weights; avoid an ImageNet download.
+    model_config = {**config, "model": {**config["model"], "pretrained": False}}
+    model = build_model(model_config).to(device)
     model.load_state_dict(checkpoint["model"])
     model.eval()
     image_size = tuple(int(value) for value in config["data"]["image_size"])

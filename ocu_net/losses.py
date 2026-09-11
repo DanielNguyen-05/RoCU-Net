@@ -6,8 +6,9 @@ from torch.nn import functional as F
 
 
 def probability_bce(prediction: torch.Tensor, target: torch.Tensor, epsilon: float = 1e-7) -> torch.Tensor:
-    prediction = prediction.clamp(epsilon, 1.0 - epsilon)
-    return F.binary_cross_entropy_with_logits(prediction, target)
+    prediction = prediction.float().clamp(epsilon, 1.0 - epsilon)
+    # Explicit probability BCE is safe inside CUDA autocast.
+    return -(target.float() * prediction.log() + (1.0 - target.float()) * torch.log1p(-prediction)).mean()
 
 
 def soft_dice_loss(prediction: torch.Tensor, target: torch.Tensor, smooth: float = 1.0) -> torch.Tensor:
@@ -30,7 +31,7 @@ def weighted_structure_loss(
 
     if kernel_size % 2 == 0:
         raise ValueError("kernel_size must be odd")
-    prediction = prediction.clamp(1e-7, 1.0 - 1e-7)
+    prediction = prediction.float().clamp(1e-7, 1.0 - 1e-7)
     local_average = F.avg_pool2d(
         target,
         kernel_size=kernel_size,
@@ -38,7 +39,7 @@ def weighted_structure_loss(
         padding=kernel_size // 2,
     )
     weights = 1.0 + float(edge_weight) * torch.abs(local_average - target)
-    bce = F.binary_cross_entropy_with_logits(prediction, target, reduction="none")
+    bce = -(target.float() * prediction.log() + (1.0 - target.float()) * torch.log1p(-prediction))
     weighted_bce = (weights * bce).sum(dim=(2, 3)) / weights.sum(dim=(2, 3)).clamp_min(1e-7)
     intersection = (prediction * target * weights).sum(dim=(2, 3))
     union = ((prediction + target) * weights).sum(dim=(2, 3))

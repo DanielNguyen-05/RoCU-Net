@@ -56,7 +56,9 @@ def main() -> None:
         seed=seed,
     )
     loaders = build_dataloaders(config, splits, training=False)
-    model = build_model(config).to(device)
+    # The checkpoint already contains encoder weights; avoid an ImageNet download.
+    model_config = {**config, "model": {**config["model"], "pretrained": False}}
+    model = build_model(model_config).to(device)
     model.load_state_dict(checkpoint["model"])
     loss_fn = build_loss(config)
     threshold = float(config["training"].get("threshold", 0.5))

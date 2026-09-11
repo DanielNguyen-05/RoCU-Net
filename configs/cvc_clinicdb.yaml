@@ -1,0 +1,10 @@
+base_config: kvasir.yaml
+
+experiment:
+  name: crs_ocu_cvc_clinicdb_seed42
+
+data:
+  root: dataset/CVC-ClinicDB
+  # Use one representation only; PNG and TIF contain the same sample IDs.
+  image_dir: PNG/Original
+  mask_dir: PNG/Ground Truth
