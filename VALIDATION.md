@@ -2,7 +2,7 @@
 
 The active dataset configs are `configs/kvasir.yaml`,
 `configs/cvc_clinicdb.yaml`, `configs/cvc_colondb.yaml`, and `configs/etis.yaml`.
-ColonDB uses the selected rotation-fix settings at seed 42.
+ColonDB uses Kvasir initialization and flip TTA at seed 42.
 
 Check local data and run the test suite:
 
@@ -14,10 +14,11 @@ python -m pytest
 To evaluate the completed winning run on the server:
 
 ```bash
-python evaluate.py --checkpoint runs/rocu_cvc_colondb_rotation_fix_seed42/best.pt --split test --save-predictions --device cuda
+python evaluate.py --checkpoint runs/rocu_cvc_colondb_transfer_seed42/best.pt --split test --save-predictions --device cuda
 ```
 
-The reported selected validation Dice is 0.8837 and IoU is 0.8102. Synthetic
+The verified saved test Dice is 0.8969 and IoU is 0.8301 at epoch 91, with
+Kvasir pretraining and four-view flip TTA. Synthetic
 smoke results are software checks and must not be used as research results.
 
 The RoCU-Net naming migration was checked locally with 29 test functions,

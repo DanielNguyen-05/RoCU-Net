@@ -40,12 +40,14 @@ def test_discovery_split_reuse_and_transform(tmp_path):
     assert set(mask_tensor.unique().tolist()).issubset({0.0, 1.0})
 
 
-def test_colondb_config_inherits_selected_rotation_fix_settings():
+def test_colondb_config_inherits_selected_transfer_settings():
     project_root = Path(__file__).resolve().parents[1]
     config = load_config(project_root / "configs/cvc_colondb.yaml")
     assert config["model"]["architecture"] == "rocu_net"
     assert config["model"]["routing_enabled"] is True
-    assert config["experiment"]["name"] == "rocu_cvc_colondb_rotation_fix_seed42"
+    assert config["experiment"]["name"] == "rocu_cvc_colondb_transfer_seed42"
+    assert config["training"]["init_checkpoint"] == "runs/rocu_kvasir_seed42/best.pt"
+    assert config["inference"]["tta"] == "flip"
     assert config["data"]["split_source"] == "runs/rocu_cvc_colondb_seed42/splits"
     assert config["augmentation"].get("random_crop_probability", 0) == 0
     assert config["loss"].get("tversky_weight", 0) == 0

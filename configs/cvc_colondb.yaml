@@ -1,13 +1,13 @@
 base_config: kvasir.yaml
 
 experiment:
-  name: rocu_cvc_colondb_rotation_fix_seed42
+  name: rocu_cvc_colondb_transfer_seed42
 
 data:
   root: dataset/CVC-ColonDB
   image_dir: images
   mask_dir: masks
-  # Reuse the exact split of the selected rotation-fix experiment.
+  # Preserve the original ColonDB split for the selected transfer run.
   split_source: runs/rocu_cvc_colondb_seed42/splits
   # Within-dataset random image split, not an external generalization test.
   train_ratio: 0.80
@@ -17,6 +17,7 @@ data:
 # Rotation correction is implemented in JointTransform for every training run.
 # Inherit the original augmentation/loss: no random crops or Tversky term.
 training:
+  init_checkpoint: runs/rocu_kvasir_seed42/best.pt
   test_after_training: true
 
 # Selected using validation. Four aligned flip views; profile this policy too.

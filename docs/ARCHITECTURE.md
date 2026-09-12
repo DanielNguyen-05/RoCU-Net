@@ -92,7 +92,9 @@ It is:
 > avoiding iterative refinement in confident regions.
 
 The selected model enables the semantic carrier, confidence routing and
-boundary-aware objective. ColonDB uses the rotation-fix training recipe.
+boundary-aware objective. The selected ColonDB run initializes from the Kvasir
+checkpoint, uses corrected rotations during training, and applies four-view
+flip TTA at inference. Its profiling results include all four forward passes.
 
 Report Dice, IoU, boundary F1, Params, MACs, latency, FPS, memory, active-cell
 ratio and conservation error. A result is not sufficient if it improves Dice
