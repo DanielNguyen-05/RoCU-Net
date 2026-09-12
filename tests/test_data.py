@@ -3,8 +3,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from ocu_net.data import JointTransform, create_or_load_splits, discover_pairs
-from ocu_net.config import load_config
+from rocu_net.data import JointTransform, create_or_load_splits, discover_pairs
+from rocu_net.config import load_config
 from unittest.mock import patch
 
 
@@ -40,16 +40,20 @@ def test_discovery_split_reuse_and_transform(tmp_path):
     assert set(mask_tensor.unique().tolist()).issubset({0.0, 1.0})
 
 
-def test_ablation_config_inherits_base_settings():
+def test_colondb_config_inherits_selected_rotation_fix_settings():
     project_root = Path(__file__).resolve().parents[1]
-    config = load_config(project_root / "configs/ablations/crs_no_routing.yaml")
-    assert config["model"]["architecture"] == "crs_ocu_net"
-    assert config["model"]["routing_enabled"] is False
+    config = load_config(project_root / "configs/cvc_colondb.yaml")
+    assert config["model"]["architecture"] == "rocu_net"
+    assert config["model"]["routing_enabled"] is True
+    assert config["experiment"]["name"] == "rocu_cvc_colondb_rotation_fix_seed42"
+    assert config["data"]["split_source"] == "runs/rocu_cvc_colondb_seed42/splits"
+    assert config["augmentation"].get("random_crop_probability", 0) == 0
+    assert config["loss"].get("tversky_weight", 0) == 0
     assert config["data"]["image_size"] == load_config(project_root / "configs/kvasir.yaml")["data"]["image_size"]
 
 
 def test_clinicdb_png_and_tif(tmp_path):
-    from ocu_net.data import PolypSegDataset
+    from rocu_net.data import PolypSegDataset
 
     for folder, extension in (("PNG", ".png"), ("TIF", ".tif")):
         root = tmp_path / folder
@@ -77,7 +81,7 @@ def test_right_angle_rotation_preserves_edge_polyp():
     mask.paste(255, (0, 0, 8, 8))
     image = mask.convert("RGB")
     transform = JointTransform((60, 20), {"rotate_90_probability": 1.0}, train=True)
-    with patch("ocu_net.data.random.choice", return_value=Image.Transpose.ROTATE_90):
+    with patch("rocu_net.data.random.choice", return_value=Image.Transpose.ROTATE_90):
         _, actual = transform(image, mask)
     expected = np.asarray(mask.transpose(Image.Transpose.ROTATE_90)) > 127
     assert np.array_equal(actual[0].numpy(), expected)
@@ -115,7 +119,7 @@ def test_finetune_reuses_original_splits_and_rejects_overlap(tmp_path):
 
 def test_identical_images_stay_in_one_split(tmp_path):
     import shutil
-    from ocu_net.data import image_content_hash
+    from rocu_net.data import image_content_hash
     root = tmp_path / "data"
     _make_tiny_kvasir(root, count=10)
     shutil.copyfile(root / "images/case_00.jpg", root / "images/duplicate.jpg")

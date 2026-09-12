@@ -7,9 +7,10 @@ import numpy as np
 import torch
 from PIL import Image
 
-from ocu_net.data import IMAGE_EXTENSIONS, JointTransform
-from ocu_net.model import build_model
-from ocu_net.utils import autocast_context, get_device
+from rocu_net.compat import load_checkpoint
+from rocu_net.data import IMAGE_EXTENSIONS, JointTransform
+from rocu_net.model import build_model
+from rocu_net.utils import autocast_context, get_device
 
 
 def parse_args() -> argparse.Namespace:
@@ -20,13 +21,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--threshold", type=float, default=None)
     parser.add_argument("--device", default="auto", choices=["auto", "cuda", "mps", "cpu"])
     return parser.parse_args()
-
-
-def load_checkpoint(path: str | Path, map_location="cpu") -> dict:
-    try:
-        return torch.load(path, map_location=map_location, weights_only=False)
-    except TypeError:
-        return torch.load(path, map_location=map_location)
 
 
 def discover_images(source: Path) -> list[Path]:
@@ -115,4 +109,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

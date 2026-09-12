@@ -1,6 +1,6 @@
 import torch
 
-from ocu_net.metrics import batch_metrics
+from rocu_net.metrics import batch_metrics
 
 
 def test_perfect_segmentation_metrics():

@@ -6,6 +6,8 @@ from typing import Any
 
 import yaml
 
+from .compat import normalize_config
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -27,7 +29,7 @@ def load_config(path: str | Path) -> dict[str, Any]:
         config = yaml.safe_load(handle)
     if not isinstance(config, dict):
         raise ValueError(f"Config must contain a YAML mapping: {config_path}")
-    config = deepcopy(config)
+    config = normalize_config(config)
     base_reference = config.pop("base_config", None)
     if base_reference is not None:
         base_path = Path(str(base_reference)).expanduser()
@@ -46,7 +48,7 @@ def resolve_project_path(path: str | Path) -> Path:
 
 
 def save_config(config: dict[str, Any], path: str | Path) -> None:
-    serializable = {key: value for key, value in config.items() if not key.startswith("_")}
+    serializable = {key: value for key, value in normalize_config(config).items() if not key.startswith("_")}
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("w", encoding="utf-8") as handle:
@@ -67,4 +69,4 @@ def apply_common_overrides(
         config["experiment"]["name"] = name
     if seed is not None:
         config["experiment"]["seed"] = int(seed)
-    return config
+    return normalize_config(config)

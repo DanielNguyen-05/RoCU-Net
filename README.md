@@ -1,16 +1,15 @@
-# CRS-OCU-Net
+# RoCU-Net
 
-Reference PyTorch implementation of **Confidence-Routed Semantic Occupancy
-Upsampling for Lightweight Polyp Segmentation**. The repository also preserves
-the original OCU-Net implementation for controlled ablation.
+Reference PyTorch implementation of **RoCU-Net** for lightweight polyp
+segmentation, using confidence-routed semantic occupancy upsampling.
 
-The proposed block keeps OCU's defining local occupancy constraint while fixing
+The proposed block keeps the local occupancy constraint while fixing
 its one-channel semantic bottleneck and avoiding iterative refinement in
 confident regions during deployment.
 
 ## 1. What is new
 
-For a parent probability `p`, CRS-OCU predicts four refined children:
+For a parent probability `p`, RoCU predicts four refined children:
 
 ```text
 q_ref[j] = sigmoid(score[j] + bias)
@@ -40,18 +39,17 @@ The default path is:
 | MobileNetV3 r6 | 32 x 32 | encoder skip |
 | MobileNetV3 r9 | 16 x 16 | bottleneck |
 | Light decoder | 64 x 64 | coarse probability + semantic carrier |
-| CRS-OCU-1 | 128 x 128 | half-resolution occupancy |
-| CRS-OCU-2 | 256 x 256 | final occupancy + boundary map |
+| RoCU-1 | 128 x 128 | half-resolution occupancy |
+| RoCU-2 | 256 x 256 | final occupancy + boundary map |
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the equations and ablation
-definitions.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the equations.
 
 ## 2. Environment
 
 Python 3.10+ and PyTorch 2.2+ are recommended.
 
 ```bash
-cd OCU-Net
+cd RoCU-Net
 python -m venv .venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
 python -m pip install --upgrade pip
@@ -91,10 +89,11 @@ selection never inspect the held-out test split.
 
 ## 4. Train, validate and test
 
-Main CRS-OCU-Net experiment:
+Main RoCU-Net experiment:
 
 ```bash
-nohup python train.py --config configs/*.yaml --device cuda > logs/RoCUNet_<dataset>.log 2>&1 &
+mkdir -p logs
+nohup python train.py --config configs/kvasir.yaml --device cuda > logs/RoCUNet_Kvasir.log 2>&1 &
 ```
 
 Useful overrides:
@@ -102,7 +101,7 @@ Useful overrides:
 ```bash
 python train.py --config configs/kvasir.yaml \
   --data-root /absolute/path/to/Kvasir \
-  --name crs_ocu_kvasir_seed87 \
+  --name rocu_kvasir_seed87 \
   --seed 87 --device cuda
 ```
 
@@ -110,14 +109,14 @@ Resume an interrupted run:
 
 ```bash
 python train.py --config configs/kvasir.yaml \
-  --resume runs/crs_ocu_kvasir_seed42/last.pt --device cuda
+  --resume runs/rocu_kvasir_seed42/last.pt --device cuda
 ```
 
 Evaluate or re-profile a selected checkpoint:
 
 ```bash
 python evaluate.py \
-  --checkpoint runs/crs_ocu_kvasir_seed42/best.pt \
+  --checkpoint runs/rocu_kvasir_seed42/best.pt \
   --split test --save-predictions --profile --device cuda
 ```
 
@@ -125,7 +124,7 @@ Predict one image or every image in a directory:
 
 ```bash
 python predict.py \
-  --checkpoint runs/crs_ocu_kvasir_seed42/best.pt \
+  --checkpoint runs/rocu_kvasir_seed42/best.pt \
   --input /path/to/images --output predictions --device cuda
 ```
 
@@ -136,42 +135,23 @@ Architecture-only profiling:
 
 ```bash
 python profile_model.py --config configs/kvasir.yaml --device cuda \
-  --output runs/crs_architecture_profile.json
+  --output runs/rocu_architecture_profile.json
 ```
 
-## 5. Paper experiments
+## 5. Dataset configurations
 
-Three seeds:
-
-```bash
-python scripts/run_multiseed.py \
-  --config configs/kvasir.yaml --seeds 13 42 87 --device cuda
-```
-
-Ablations at seed 42:
-
-```bash
-python scripts/run_ablations.py --device cuda --seed 42
-```
-
-The ablation suite evaluates:
-
-- full CRS-OCU-Net;
-- no confidence routing (all cells use refined OCU);
-- no cross-scale semantic carrier;
-- no boundary/routing/structure supervision.
+The supported configs are `kvasir.yaml`, `cvc_clinicdb.yaml`,
+`cvc_colondb.yaml` and `etis.yaml`. Each uses seed 42. ColonDB uses the selected
+rotation-fix recipe; experimental configs and multi-seed runners were removed.
 
 Create a CSV and Markdown comparison from completed runs:
 
 ```bash
 python make_comparison_table.py \
-  OCU=runs/ocu_net_kvasir_seed42 \
-  CRS-OCU=runs/crs_ocu_kvasir_seed42 \
-  --output runs/ocu_vs_crs
+  RoCU-Net-Kvasir=runs/rocu_kvasir_seed42 \
+  RoCU-Net-ClinicDB=runs/rocu_cvc_clinicdb_seed42 \
+  --output runs/rocu_results
 ```
-
-Keep the same manifests, image size, seeds and metric code when adding external
-baselines such as LV-UNet, DeepNeXt, UNeXt and EGE-UNet.
 
 ## 6. Outputs and lightweight metrics
 
@@ -204,7 +184,7 @@ Lightweight/deployment metrics:
 - Conv2d/Linear MACs and `FLOPs = 2 x MACs`;
 - mean, median and p95 batch-1 latency plus FPS;
 - peak CUDA allocated/reserved memory;
-- CRS stage-wise active-cell and estimated solver-skip ratios;
+- RoCU stage-wise active-cell and estimated solver-skip ratios;
 - exact hardware and software environment.
 
 The iterative solver is element-wise and intentionally excluded from MACs, so
@@ -224,20 +204,33 @@ pytest
 Synthetic results are only for software verification and must never appear in
 the paper.
 
-## 8. Original OCU-Net baseline
+## 8. Model naming and existing checkpoints
 
-To run the earlier architecture, set `model.architecture: ocu_net` in a derived config:
+All dataset configs use `model.architecture: rocu_net`. The Python package is
+`rocu_net`, the model class is `RoCUNet`, and its two `RoCUBlock` stages are
+`rocu1` and `rocu2`. Solver settings are `model.solver_iterations` and
+`model.epsilon`. New run directories use the `rocu_` prefix.
+
+Historical checkpoint names and stage keys are translated automatically when
+loading for training, evaluation, prediction, visualization and profiling.
+Weights, optimizer state and numerical settings are preserved; retraining is
+not required. The earlier occupancy-only implementation remains available as
+`OccupancyUNet` (`occupancy_unet`) for old checkpoints.
+
+After copying the updated code to the server, migrate existing output names:
 
 ```bash
-python train.py --config configs/kvasir.yaml --device cuda
+python scripts/migrate_rocu_names.py --apply
 ```
 
-`model.architecture` selects either `ocu_net` or `crs_ocu_net`, allowing both
-methods to use the same data, training, evaluation and profiling pipeline.
+This renames legacy output folders/files and normalizes saved YAML configs.
+It refuses to overwrite an existing destination. Without `--apply`, it prints
+the planned changes. Original checkpoint binaries, logs and measured results
+retain their recorded content; new outputs use the current names.
 
 ## 9. CVC-ClinicDB
 
-The project uses the same CRS-OCU-Net, preprocessing, losses and metrics for
+The project uses the same RoCU-Net, preprocessing, losses and metrics for
 both datasets. `configs/cvc_clinicdb.yaml` inherits the current Kvasir settings
 (320 x 320, batch size 8, up to 250 epochs) and uses a separate run directory.
 
@@ -259,13 +252,13 @@ root, set those directory values without the PNG/TIF prefix.
 ```bash
 python scripts/check_dataset.py --config configs/cvc_clinicdb.yaml
 python train.py --config configs/cvc_clinicdb.yaml --device cuda
-python evaluate.py --checkpoint runs/crs_ocu_cvc_clinicdb_seed42/best.pt --split test --save-predictions --device cuda
-python predict.py --checkpoint runs/crs_ocu_cvc_clinicdb_seed42/best.pt --input dataset/CVC-ClinicDB/PNG/Original --output predictions/cvc_clinicdb --device cuda
+python evaluate.py --checkpoint runs/rocu_cvc_clinicdb_seed42/best.pt --split test --save-predictions --device cuda
+python predict.py --checkpoint runs/rocu_cvc_clinicdb_seed42/best.pt --input dataset/CVC-ClinicDB/PNG/Original --output predictions/cvc_clinicdb --device cuda
 ```
 
 Use `--device auto` on a machine without CUDA. Training automatically evaluates
 `best.pt` on the held-out test split and saves results under
-`runs/crs_ocu_cvc_clinicdb_seed42/`. The separate evaluate command repeats that
+`runs/rocu_cvc_clinicdb_seed42/`. The separate evaluate command repeats that
 held-out evaluation. `--data-root` relocates the same dataset; it does not turn
 a Kvasir checkpoint into a cross-dataset CVC evaluation.
 
@@ -277,8 +270,7 @@ sequence/patient-disjoint protocol. Use the same protocol when comparing runs.
 Resume with the CVC config:
 
 ```bash
-python train.py --config configs/cvc_clinicdb.yaml --resume runs/crs_ocu_cvc_clinicdb_seed42/last.pt --device cuda
-python scripts/run_multiseed.py --config configs/cvc_clinicdb.yaml --prefix crs_ocu_cvc_clinicdb --seeds 13 42 87 --device cuda
+python train.py --config configs/cvc_clinicdb.yaml --resume runs/rocu_cvc_clinicdb_seed42/last.pt --device cuda
 ```
 
 Review note: probability BCE and structure BCE previously passed probabilities
@@ -307,7 +299,7 @@ from `kvasir.yaml`. They create separate runs:
 
 | Config | Run | Train / validation / test |
 |---|---|---|
-| `cvc_colondb.yaml` | `runs/rocu_cvc_colondb_seed42` | 304 / 38 / 38 |
+| `cvc_colondb.yaml` | `runs/rocu_cvc_colondb_rotation_fix_seed42` | 304 / 38 / 38 |
 | `etis.yaml` | `runs/rocu_etis_seed42` | 156 / 19 / 21 |
 
 These are **within-dataset random image splits**. Training on ColonDB/ETIS and
@@ -316,7 +308,7 @@ a Kvasir-trained model on all ColonDB/ETIS images. Do not describe a model
 trained on those datasets as unseen-dataset generalization.
 
 ```bash
-python evaluate.py --checkpoint runs/rocu_cvc_colondb_seed42/best.pt --save-predictions --device cuda
+python evaluate.py --checkpoint runs/rocu_cvc_colondb_rotation_fix_seed42/best.pt --save-predictions --device cuda
 python evaluate.py --checkpoint runs/rocu_etis_seed42/best.pt --save-predictions --device cuda
 ```
 
@@ -329,7 +321,7 @@ performed by this command.
 
 ```bash
 python visualize.py \
-  --checkpoint runs/crs_ocu_kvasir_seed42/best.pt \
+  --checkpoint runs/rocu_kvasir_seed42/best.pt \
   --data-root dataset/Kvasir-SEG \
   --output figures/kvasir --device cuda
   # --selection best # mặc định là phân bố đều (1 mẫu khó nhất 1 mẫu ở khoảng 25%, 1 mẫu trung vị, 1 mẫu ở khoảng 75%, 1 mẫu tốt nhất)
@@ -357,7 +349,7 @@ Outputs:
   `captions.txt`: values and provenance needed to reproduce and describe figures.
 - `training_curves.{png,pdf}` when the run contains `history.csv`.
 
-The default six rows cover evenly spaced **Dice ranks from worst to best**.
+The default five rows cover evenly spaced **Dice ranks from worst to best**.
 This avoids silently presenting only successful cases. Use `--selection best`
 for an explicitly labeled illustrative success panel, `--selection worst` for
 failure analysis, or `--selection random --seed 42`. Use `--sample-ids ID1 ID2`
@@ -368,9 +360,9 @@ For a separately trained dataset, substitute its checkpoint. For external
 all-image evaluation of a Kvasir checkpoint:
 
 ```bash
-python visualize.py --checkpoint runs/crs_ocu_kvasir_seed42/best.pt \
+python visualize.py --checkpoint runs/rocu_kvasir_seed42/best.pt \
   --external-config configs/cvc_colondb.yaml --output figures/kvasir_to_colondb --device cuda
-python visualize.py --checkpoint runs/crs_ocu_kvasir_seed42/best.pt \
+python visualize.py --checkpoint runs/rocu_kvasir_seed42/best.pt \
   --external-config configs/etis.yaml --output figures/kvasir_to_etis --device cuda
 ```
 
@@ -390,63 +382,39 @@ prefer `history.csv` for full precision. Curves are unsmoothed. No actual
 checkpoint or saved prediction masks were present when this tool was added,
 so qualitative model results still require your trained checkpoint.
 
-For the paper, use qualitative segmentation and the full-split distribution
-to show quality; pair the mechanism maps with controlled ablations and measured
-latency/FPS to substantiate conservation and efficiency. A single model's maps
-cannot establish superiority over baselines.
+Use qualitative segmentation and the full-split distribution to show quality,
+and report measured latency/FPS alongside the mechanism maps.
 
 Metric correction in this update: boundary F1 now returns 0 when both boundary
 precision and recall are 0 (disjoint contours). The earlier code returned 1
 in that case. Re-evaluate old checkpoints before reporting boundary F1; Dice
 and IoU calculations are unchanged.
 
-## 12. ColonDB audit and revised training
+## 12. Selected ColonDB result
 
-See [the evidence-backed ColonDB report](reports/colondb_audit/REPORT.md) for
-checkpoint checks, failure cases, the LV-UNet metric/split mismatch, and the
-controlled validation-only routing comparison. Original run files are preserved.
+`configs/cvc_colondb.yaml` now resolves to the exact configuration of
+`rocu_cvc_colondb_rotation_fix_seed42`. It uses corrected rotations, the original
+loss and augmentation settings, and the original 304/38/38 split. The reported
+validation results are Dice **0.8837**, IoU **0.8102**, recall **0.8953**,
+precision **0.9001**, and boundary F1 **0.7441**. These are validation scores.
 
-The revised augmentation preserves the full rectangular image when rotating.
-The candidate ColonDB configs add foreground-retaining random crops and a
-moderate Tversky term to reduce missed foreground. They reuse the original
-`runs/rocu_cvc_colondb_seed42/splits` files and create separate run directories.
-
-```bash
-# Fine-tune your existing ColonDB checkpoint with a fresh optimizer.
-python train.py --config configs/cvc_colondb_finetune.yaml --device cuda
-
-# Alternatively, train the revised recipe from ImageNet initialization.
-python train.py --config configs/cvc_colondb_v2.yaml --device cuda
-```
-
-Both configs disable automatic test evaluation while comparing recipes on
-validation. After choosing the recipe:
+Use the already-trained winning checkpoint to evaluate test and export figures:
 
 ```bash
-python evaluate.py --checkpoint runs/rocu_cvc_colondb_finetune_seed42/best.pt --split test --save-predictions --device cuda
+python evaluate.py --checkpoint runs/rocu_cvc_colondb_rotation_fix_seed42/best.pt --split test --save-predictions --device cuda
+python visualize.py --checkpoint runs/rocu_cvc_colondb_rotation_fix_seed42/best.pt --output figures/colondb --num-samples 5 --device cuda
 ```
 
-`--init-checkpoint` loads weights only into a new run, whereas `--resume` restores
-optimizer/scheduler/epoch. Fine-tuning evaluates the initial model first and
-keeps those weights as best if no later epoch improves validation Dice. Starting
-a new run in a directory already containing checkpoints now raises an error;
-use a new `--name` or resume explicitly.
+The winning run is currently on the server; use those commands there, or copy
+its folder (including `best.pt` and `splits/`) locally. The original config's
+`test_after_training: false` is retained; test is run explicitly as above.
 
-Optional loss settings: `loss.tversky_weight` (default 0, preserving existing
-loss behavior) and `loss.tversky_beta` (default 0.7). `training.freeze_encoder_bn`
-freezes running statistics only and is enabled in the fine-tuning config.
-Rotation corrections affect all future training; prediction of old checkpoints
-is unchanged. A short real-data CPU pilot is a validation check, not a complete
-GPU training experiment or a new test-set claim.
+To reproduce training, keep `runs/rocu_cvc_colondb_seed42/splits/` available and
+use a fresh output name if the winning run already exists:
 
-The downloaded ColonDB data also contains exact duplicate images across saved
-splits (346 distinct RGB images among 380 files). For a new comparison that
-keeps identical images together, use `configs/cvc_colondb_grouped.yaml` and
-train all baselines on the same new manifests. This changes the held-out set:
-do not initialize it from the old ColonDB checkpoint. It does not provide
-video/patient grouping or resolve differing annotations of the same image.
+```bash
+python train.py --config configs/cvc_colondb.yaml --name rocu_cvc_colondb_rotation_fix_repeat --device cuda
+```
 
-The initial three-epoch CPU fine-tuning pilot did **not** improve validation
-Dice (0.879202 initially versus 0.876031 at epoch 3). These configs remain
-experimental; the rotation correction is a verified software fix, while
-accuracy benefits from the new recipe still require controlled training.
+Earlier audit reports and run outputs are historical records. Their experimental
+config commands are superseded by this section.

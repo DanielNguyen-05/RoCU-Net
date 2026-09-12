@@ -1,5 +1,5 @@
 import torch
-from ocu_net.losses import probability_bce, weighted_structure_loss, soft_tversky_loss
+from rocu_net.losses import probability_bce, weighted_structure_loss, soft_tversky_loss
 
 
 def test_probability_bce_matches_reference_and_gradients():

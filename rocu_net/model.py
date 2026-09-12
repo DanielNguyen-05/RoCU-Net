@@ -6,6 +6,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from .compat import CheckpointCompatibleModule, normalize_config
+
 
 class ConvBNAct(nn.Sequential):
     def __init__(
@@ -300,7 +302,7 @@ class _OccupancyConstraint(torch.autograd.Function):
         )
 
 
-class OCUBlock(nn.Module):
+class OccupancyBlock(nn.Module):
     """Occupancy-Constrained Upsampling block for a 2x scale transition."""
 
     def __init__(
@@ -332,7 +334,7 @@ class OCUBlock(nn.Module):
         expected_size = (parent.shape[-2] * 2, parent.shape[-1] * 2)
         if encoder_feature.shape[-2:] != expected_size:
             raise ValueError(
-                f"OCU guide size {tuple(encoder_feature.shape[-2:])} must be 2x parent "
+                f"Occupancy guide size {tuple(encoder_feature.shape[-2:])} must be 2x parent "
                 f"size {tuple(parent.shape[-2:])}."
             )
         parent_up = F.interpolate(parent, size=expected_size, mode="nearest")
@@ -379,7 +381,7 @@ def _routed_occupancy_solve(
     """Inference-only solver that skips confident parent cells.
 
     Inactive cells use the exact conservative identity allocation q_j = p.
-    Active cells use the same monotone bisection equation as OCU.
+    Active cells use the same monotone bisection equation as the occupancy block.
     """
 
     dtype = scores.dtype
@@ -408,7 +410,7 @@ def _routed_occupancy_solve(
     )
 
 
-class CRSOccupancyBlock(nn.Module):
+class RoCUBlock(nn.Module):
     """Confidence-Routed Semantic Occupancy upsampling.
 
     A thin semantic carrier survives each 2x transition. The learned allocation
@@ -485,7 +487,7 @@ class CRSOccupancyBlock(nn.Module):
         expected_size = (parent.shape[-2] * 2, parent.shape[-1] * 2)
         if encoder_feature.shape[-2:] != expected_size:
             raise ValueError(
-                f"CRS-OCU guide size {tuple(encoder_feature.shape[-2:])} must be "
+                f"RoCU guide size {tuple(encoder_feature.shape[-2:])} must be "
                 f"2x parent size {tuple(parent.shape[-2:])}."
             )
         if carrier.shape[1] != self.carrier_channels or carrier.shape[-2:] != parent.shape[-2:]:
@@ -553,8 +555,8 @@ class CRSOccupancyBlock(nn.Module):
         return children, carrier_out, diagnostics
 
 
-class OCUNet(nn.Module):
-    """Compact five-stage U-Net with two high-resolution OCU stages."""
+class OccupancyUNet(CheckpointCompatibleModule):
+    """Legacy five-stage U-Net with two high-resolution occupancy stages."""
 
     def __init__(
         self,
@@ -579,8 +581,8 @@ class OCUNet(nn.Module):
         self.decoder3 = DecoderBlock(c4, c3, c3)
         self.decoder2 = DecoderBlock(c3, c2, c2)
         self.occupancy_head = nn.Conv2d(c2, 1, kernel_size=1)
-        self.ocu1 = OCUBlock(c1, guide_channels, solver_iterations, epsilon)
-        self.ocu2 = OCUBlock(c0, guide_channels, solver_iterations, epsilon)
+        self.occupancy1 = OccupancyBlock(c1, guide_channels, solver_iterations, epsilon)
+        self.occupancy2 = OccupancyBlock(c0, guide_channels, solver_iterations, epsilon)
         self.apply(self._initialize_weights)
 
     @staticmethod
@@ -605,8 +607,8 @@ class OCUNet(nn.Module):
         d2 = self.decoder2(d3, e2)
         logits88 = self.occupancy_head(d2)
         p88 = torch.sigmoid(logits88)
-        p176 = self.ocu1(p88, e1)
-        p352 = self.ocu2(p176, e0)
+        p176 = self.occupancy1(p88, e1)
+        p352 = self.occupancy2(p176, e0)
         return {
             "p352": p352,
             "p176": p176,
@@ -615,8 +617,8 @@ class OCUNet(nn.Module):
         }
 
 
-class CRSOCUNet(nn.Module):
-    """Lightweight U-Net with two Confidence-Routed Semantic OCU stages."""
+class RoCUNet(CheckpointCompatibleModule):
+    """RoCU-Net with two confidence-routed semantic occupancy stages."""
 
     def __init__(
         self,
@@ -651,7 +653,7 @@ class CRSOCUNet(nn.Module):
                 depths=backbone_depths,
             )
         else:
-            raise ValueError(f"Unsupported CRS-OCU backbone: {backbone}")
+            raise ValueError(f"Unsupported RoCU backbone: {backbone}")
         c1, c2, c3, c4 = self.encoder.out_channels
         d3_channels, d2_channels = (int(value) for value in decoder_channels)
         carrier_channels = int(carrier_channels)
@@ -676,8 +678,8 @@ class CRSOCUNet(nn.Module):
             "uncertainty_threshold": uncertainty_threshold,
             "use_semantic_carrier": use_semantic_carrier,
         }
-        self.crs1 = CRSOccupancyBlock(c1, **block_kwargs)
-        self.crs2 = CRSOccupancyBlock(shallow_guide_channels, **block_kwargs)
+        self.rocu1 = RoCUBlock(c1, **block_kwargs)
+        self.rocu2 = RoCUBlock(shallow_guide_channels, **block_kwargs)
         self.backbone_name = backbone_name
         self.pretrained = bool(pretrained)
         self.carrier_channels = carrier_channels
@@ -688,8 +690,8 @@ class CRSOCUNet(nn.Module):
             self.decoder2,
             self.coarse_head,
             self.carrier_head,
-            self.crs1,
-            self.crs2,
+            self.rocu1,
+            self.rocu2,
         ]
         if isinstance(self.encoder, EfficientEncoder):
             custom_modules.append(self.encoder)
@@ -697,7 +699,7 @@ class CRSOCUNet(nn.Module):
             module.apply(self._initialize_weights)
         if self.coarse_head.bias is not None:
             nn.init.constant_(self.coarse_head.bias, -2.0)
-        for block in (self.crs1, self.crs2):
+        for block in (self.rocu1, self.rocu2):
             nn.init.constant_(block.boundary_head.bias, -1.0)
 
     @staticmethod
@@ -720,10 +722,10 @@ class CRSOCUNet(nn.Module):
         logits_quarter = self.coarse_head(d2)
         p_quarter = torch.sigmoid(logits_quarter)
         carrier_quarter = self.carrier_head(d2)
-        p_half, carrier_half, diagnostics1 = self.crs1(
+        p_half, carrier_half, diagnostics1 = self.rocu1(
             p_quarter, carrier_quarter, e1
         )
-        p_full, _, diagnostics2 = self.crs2(p_half, carrier_half, full_guide)
+        p_full, _, diagnostics2 = self.rocu2(p_half, carrier_half, full_guide)
         return {
             # Historical keys keep the complete train/evaluate pipeline compatible.
             "p352": p_full,
@@ -746,10 +748,10 @@ class CRSOCUNet(nn.Module):
 
 
 def build_model(config: dict) -> nn.Module:
-    cfg = config["model"]
-    architecture = str(cfg.get("architecture", "ocu_net")).lower().replace("-", "_")
-    if architecture in {"crs_ocu", "crs_ocu_net", "crsocunet"}:
-        return CRSOCUNet(
+    cfg = normalize_config(config)["model"]
+    architecture = cfg.get("architecture", "rocu_net")
+    if architecture == "rocu_net":
+        return RoCUNet(
             in_channels=int(cfg.get("in_channels", 3)),
             backbone=str(cfg.get("backbone", "mobilenet_v3_large")),
             pretrained=bool(cfg.get("pretrained", True)),
@@ -758,19 +760,19 @@ def build_model(config: dict) -> nn.Module:
             decoder_channels=tuple(cfg.get("decoder_channels", (64, 48))),
             carrier_channels=int(cfg.get("carrier_channels", 24)),
             shallow_guide_channels=int(cfg.get("shallow_guide_channels", 16)),
-            solver_iterations=int(cfg.get("ocu_solver_iterations", 24)),
-            epsilon=float(cfg.get("ocu_epsilon", 1e-6)),
+            solver_iterations=int(cfg.get("solver_iterations", 24)),
+            epsilon=float(cfg.get("epsilon", 1e-6)),
             routing_enabled=bool(cfg.get("routing_enabled", True)),
             hard_routing_inference=bool(cfg.get("hard_routing_inference", True)),
             uncertainty_threshold=float(cfg.get("routing_uncertainty_threshold", 0.20)),
             use_semantic_carrier=bool(cfg.get("use_semantic_carrier", True)),
         )
-    if architecture not in {"ocu", "ocu_net", "ocunet"}:
+    if architecture != "occupancy_unet":
         raise ValueError(f"Unsupported model architecture: {architecture}")
-    return OCUNet(
+    return OccupancyUNet(
         in_channels=int(cfg.get("in_channels", 3)),
         encoder_channels=tuple(cfg.get("encoder_channels", (16, 32, 64, 128, 256))),
         guide_channels=int(cfg.get("guide_channels", 8)),
-        solver_iterations=int(cfg.get("ocu_solver_iterations", 24)),
-        epsilon=float(cfg.get("ocu_epsilon", 1e-6)),
+        solver_iterations=int(cfg.get("solver_iterations", 24)),
+        epsilon=float(cfg.get("epsilon", 1e-6)),
     )

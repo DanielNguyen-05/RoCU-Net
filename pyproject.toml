@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "crs-ocu-net"
+name = "rocu-net"
 version = "1.0.0"
-description = "Confidence-Routed Semantic Occupancy upsampling for lightweight polyp segmentation"
+description = "RoCU-Net: confidence-routed semantic occupancy upsampling for lightweight polyp segmentation"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["ocu_net*"]
+include = ["rocu_net*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

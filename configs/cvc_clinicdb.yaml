@@ -1,7 +1,7 @@
 base_config: kvasir.yaml
 
 experiment:
-  name: crs_ocu_cvc_clinicdb_seed42
+  name: rocu_cvc_clinicdb_seed42
 
 data:
   root: dataset/CVC-ClinicDB

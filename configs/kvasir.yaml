@@ -1,5 +1,5 @@
 experiment:
-  name: crs_ocu_kvasir_seed42
+  name: rocu_kvasir_seed42
   output_dir: runs
   seed: 42
   deterministic: false
@@ -20,7 +20,7 @@ data:
   persistent_workers: true
 
 model:
-  architecture: crs_ocu_net
+  architecture: rocu_net
   in_channels: 3
   backbone: mobilenet_v3_large
   pretrained: true
@@ -34,8 +34,8 @@ model:
   carrier_channels: 32
   shallow_guide_channels: 24
 
-  ocu_solver_iterations: 24
-  ocu_epsilon: 1.0e-6
+  solver_iterations: 24
+  epsilon: 1.0e-6
   routing_enabled: true
   hard_routing_inference: true
 
@@ -88,4 +88,3 @@ profiling:
   batch_size: 1
   warmup_iterations: 30
   benchmark_iterations: 100
-

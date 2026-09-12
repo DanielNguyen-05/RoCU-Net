@@ -9,10 +9,11 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from ocu_net.data import _read_manifest, PolypSegDataset, JointTransform
-from ocu_net.losses import build_loss
-from ocu_net.model import build_model
-from ocu_net.utils import save_json
+from rocu_net.compat import load_checkpoint
+from rocu_net.data import _read_manifest, PolypSegDataset, JointTransform
+from rocu_net.losses import build_loss
+from rocu_net.model import build_model
+from rocu_net.utils import save_json
 
 
 def legacy_bce(p, y, epsilon=1e-7):
@@ -31,9 +32,9 @@ def legacy_structure(p, y, kernel_size=31, edge_weight=5, smooth=1):
 def main():
     torch.set_num_threads(2)
     results = []
-    for run_name, dataset in [('crs_ocu_kvasir_seed42','Kvasir-SEG'), ('crs_ocu_cvc_clinicdb_seed42','CVC-ClinicDB'), ('rocu_cvc_colondb_seed42','CVC-ColonDB')]:
+    for run_name, dataset in [('rocu_kvasir_seed42','Kvasir-SEG'), ('rocu_cvc_clinicdb_seed42','CVC-ClinicDB'), ('rocu_cvc_colondb_seed42','CVC-ColonDB')]:
         run = Path('runs') / run_name
-        checkpoint = torch.load(run/'best.pt', map_location='cpu', weights_only=False)
+        checkpoint = load_checkpoint(run / 'best.pt')
         cfg = checkpoint['config']
         cfg['model']['pretrained'] = False
         model = build_model(cfg).eval()
@@ -46,7 +47,7 @@ def main():
             for batch in loader:
                 output = model(batch['image'])
                 current, _ = criterion(output, batch['mask'])
-                with patch('ocu_net.losses.probability_bce', legacy_bce), patch('ocu_net.losses.weighted_structure_loss', legacy_structure):
+                with patch('rocu_net.losses.probability_bce', legacy_bce), patch('rocu_net.losses.weighted_structure_loss', legacy_structure):
                     legacy, _ = criterion(output, batch['mask'])
                 sums['current'] += float(current) * len(batch['image'])
                 sums['legacy'] += float(legacy) * len(batch['image'])

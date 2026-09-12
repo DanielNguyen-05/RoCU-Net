@@ -1,7 +1,0 @@
-base_config: ../cvc_colondb.yaml
-experiment:
-  name: rocu_cvc_colondb_rotation_fix_seed42
-data:
-  split_source: runs/rocu_cvc_colondb_seed42/splits
-training:
-  test_after_training: false

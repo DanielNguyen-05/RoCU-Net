@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from ocu_net.visualization import error_map, select_samples, training_figure
+from rocu_net.visualization import error_map, select_samples, training_figure
 from visualize import load_evaluation_pairs
 
 
@@ -42,11 +42,14 @@ def test_training_log_exports_actual_values(tmp_path):
 
 
 def test_new_dataset_configs_inherit_training_settings():
-    from ocu_net.config import load_config
+    from rocu_net.config import load_config
     root = Path(__file__).resolve().parents[1]
     base = load_config(root / "configs/kvasir.yaml")
     for name, dataset in [("cvc_colondb", "CVC-ColonDB"), ("etis", "ETIS")]:
         cfg = load_config(root / f"configs/{name}.yaml")
         assert cfg["data"]["root"] == f"dataset/{dataset}"
-        assert cfg["training"] == base["training"]
+        expected_training = dict(base["training"])
+        if name == "cvc_colondb":
+            expected_training["test_after_training"] = False
+        assert cfg["training"] == expected_training
         assert cfg["experiment"]["name"] != base["experiment"]["name"]

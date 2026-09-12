@@ -1,11 +1,11 @@
 import torch
 
-from ocu_net.losses import MultiScaleOccupancyLoss
-from ocu_net.model import CRSOCUNet, CRSOccupancyBlock, OCUNet, OCUBlock, build_model
+from rocu_net.losses import MultiScaleOccupancyLoss
+from rocu_net.model import RoCUNet, RoCUBlock, OccupancyUNet, OccupancyBlock, build_model
 
 
 def test_model_shapes_and_cross_scale_conservation():
-    model = OCUNet(encoder_channels=(8, 16, 24, 32, 48), guide_channels=4, solver_iterations=28)
+    model = OccupancyUNet(encoder_channels=(8, 16, 24, 32, 48), guide_channels=4, solver_iterations=28)
     model.eval()
     image = torch.randn(2, 3, 64, 64)
     with torch.no_grad():
@@ -19,8 +19,8 @@ def test_model_shapes_and_cross_scale_conservation():
     assert torch.allclose(pooled_mid, outputs["p88"], atol=2e-5, rtol=2e-5)
 
 
-def test_ocu_backward_is_finite_and_reaches_both_inputs():
-    block = OCUBlock(encoder_channels=7, guide_channels=3, solver_iterations=28)
+def test_occupancy_backward_is_finite_and_reaches_both_inputs():
+    block = OccupancyBlock(encoder_channels=7, guide_channels=3, solver_iterations=28)
     parent = torch.sigmoid(torch.randn(2, 1, 8, 8)).requires_grad_()
     guide = torch.randn(2, 7, 16, 16, requires_grad=True)
     output = block(parent, guide)
@@ -34,7 +34,7 @@ def test_ocu_backward_is_finite_and_reaches_both_inputs():
 
 
 def test_multiscale_loss_backward():
-    model = OCUNet(encoder_channels=(8, 16, 24, 32, 48), guide_channels=4)
+    model = OccupancyUNet(encoder_channels=(8, 16, 24, 32, 48), guide_channels=4)
     image = torch.randn(1, 3, 64, 64)
     target = (torch.rand(1, 1, 64, 64) > 0.7).float()
     outputs = model(image)
@@ -54,8 +54,8 @@ def test_multiscale_loss_backward():
     }
 
 
-def test_crs_model_shapes_conservation_and_diagnostics():
-    model = CRSOCUNet(
+def test_rocu_model_shapes_conservation_and_diagnostics():
+    model = RoCUNet(
         backbone="efficient",
         pretrained=False,
         backbone_channels=(8, 12, 16, 24),
@@ -88,8 +88,8 @@ def test_crs_model_shapes_conservation_and_diagnostics():
     )
 
 
-def test_crs_confident_cells_take_identity_route_at_inference():
-    block = CRSOccupancyBlock(
+def test_rocu_confident_cells_take_identity_route_at_inference():
+    block = RoCUBlock(
         encoder_channels=6,
         carrier_channels=4,
         solver_iterations=24,
@@ -106,10 +106,10 @@ def test_crs_confident_cells_take_identity_route_at_inference():
     assert float(diagnostics["active_fraction"]) == 0.0
 
 
-def test_build_model_selects_crs_architecture():
+def test_build_model_selects_rocu_architecture():
     config = {
         "model": {
-            "architecture": "crs_ocu_net",
+            "architecture": "rocu_net",
             "backbone": "efficient",
             "pretrained": False,
             "backbone_channels": [8, 12, 16, 24],
@@ -119,4 +119,4 @@ def test_build_model_selects_crs_architecture():
             "shallow_guide_channels": 8,
         }
     }
-    assert isinstance(build_model(config), CRSOCUNet)
+    assert isinstance(build_model(config), RoCUNet)

@@ -15,11 +15,12 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from ocu_net.config import resolve_project_path
-from ocu_net.data import _read_manifest, JointTransform, PolypSegDataset
-from ocu_net.metrics import batch_metrics
-from ocu_net.model import build_model
-from ocu_net.utils import save_json
+from rocu_net.compat import load_checkpoint
+from rocu_net.config import resolve_project_path
+from rocu_net.data import _read_manifest, JointTransform, PolypSegDataset
+from rocu_net.metrics import batch_metrics
+from rocu_net.model import build_model
+from rocu_net.utils import save_json
 
 
 def main():
@@ -31,7 +32,7 @@ def main():
     torch.set_num_threads(args.threads)
     run, out = Path(args.run), Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
-    ck = torch.load(run / 'best.pt', map_location='cpu', weights_only=False)
+    ck = load_checkpoint(run / 'best.pt')
     config = ck['config']
     root = resolve_project_path(config['data']['root'])
     splits = {s: _read_manifest(run / 'splits' / f'{s}.csv', root) for s in ('train', 'val', 'test')}
@@ -75,9 +76,9 @@ def main():
                 output = model(x)
                 variants = {'baseline': output}
                 if split == 'val':
-                    for block in (model.crs1, model.crs2): block.hard_routing_inference = False
+                    for block in (model.rocu1, model.rocu2): block.hard_routing_inference = False
                     variants['dense_solver'] = model(x)
-                    for block in (model.crs1, model.crs2): block.hard_routing_inference = config['model']['hard_routing_inference']
+                    for block in (model.rocu1, model.rocu2): block.hard_routing_inference = config['model']['hard_routing_inference']
                 for variant, result in variants.items():
                     metrics = batch_metrics(result['p352'].float(), y)
                     for i, sample_id in enumerate(batch['id']):

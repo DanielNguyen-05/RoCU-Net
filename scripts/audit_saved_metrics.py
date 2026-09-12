@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from ocu_net.config import load_config, resolve_project_path
-from ocu_net.utils import save_json
+from rocu_net.config import load_config, resolve_project_path
+from rocu_net.utils import save_json
 
 
 def main():

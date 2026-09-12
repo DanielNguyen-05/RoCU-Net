@@ -176,7 +176,7 @@ def profile_model(
                 (total_cells - active_cells) / total_cells if total_cells else 0.0
             ),
             "hard_routing_inference": bool(
-                getattr(getattr(model, "crs1", None), "hard_routing_inference", False)
+                getattr(getattr(model, "rocu1", None), "hard_routing_inference", False)
             ),
         }
     timings_ms, memory = benchmark_latency(
@@ -191,10 +191,10 @@ def profile_model(
     if checkpoint_path is not None and Path(checkpoint_path).is_file():
         checkpoint_size_mb = Path(checkpoint_path).stat().st_size / (1024**2)
     solver_iterations = None
-    if hasattr(model, "ocu1"):
-        solver_iterations = int(model.ocu1.solver_iterations)
-    elif hasattr(model, "crs1"):
-        solver_iterations = int(model.crs1.solver_iterations)
+    if hasattr(model, "occupancy1"):
+        solver_iterations = int(model.occupancy1.solver_iterations)
+    elif hasattr(model, "rocu1"):
+        solver_iterations = int(model.rocu1.solver_iterations)
     result = {
         "input": {
             "shape": [batch_size, in_channels, image_size[0], image_size[1]],
@@ -214,8 +214,8 @@ def profile_model(
             "flops_per_image": int(2 * macs_per_image),
             "gflops_per_image": 2 * macs_per_image / 1e9,
             "flops_convention": "FLOPs = 2 x MACs",
-            "macs_scope": "Conv2d and Linear only; OCU solver elementwise operations excluded",
-            "ocu_bisection_iterations_per_block": solver_iterations,
+            "macs_scope": "Conv2d and Linear only; occupancy solver elementwise operations excluded",
+            "solver_iterations_per_block": solver_iterations,
         },
         "runtime": {
             "warmup_iterations": int(warmup_iterations),

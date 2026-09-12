@@ -1,12 +1,12 @@
 import torch
-from ocu_net.engine import train_one_epoch
-from ocu_net.losses import MultiScaleOccupancyLoss
-from ocu_net.model import CRSOCUNet
-from ocu_net.utils import build_grad_scaler
+from rocu_net.engine import train_one_epoch
+from rocu_net.losses import MultiScaleOccupancyLoss
+from rocu_net.model import RoCUNet
+from rocu_net.utils import build_grad_scaler
 
 
 def test_freeze_encoder_bn_keeps_statistics_and_trains_weights():
-    model = CRSOCUNet(backbone="efficient", pretrained=False,
+    model = RoCUNet(backbone="efficient", pretrained=False,
                      backbone_channels=(8, 12, 16, 24), backbone_depths=(1, 1, 1, 1),
                      decoder_channels=(20, 16), carrier_channels=8, shallow_guide_channels=8)
     bn = next(m for m in model.encoder.modules() if isinstance(m, torch.nn.BatchNorm2d))

@@ -1,9 +1,0 @@
-base_config: ../kvasir.yaml
-experiment:
-  name: ablation_crs_no_routing_seed42
-model:
-  routing_enabled: false
-  hard_routing_inference: false
-loss:
-  routing_weight: 0.0
-

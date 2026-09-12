@@ -1,6 +1,0 @@
-base_config: ../kvasir.yaml
-experiment:
-  name: ablation_crs_no_semantic_carrier_seed42
-model:
-  use_semantic_carrier: false
-

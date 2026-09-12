@@ -1,6 +1,0 @@
-base_config: ../cvc_colondb_v2.yaml
-experiment:
-  name: rocu_cvc_colondb_crop_only_seed42
-loss:
-  tversky_weight: 0.0
-

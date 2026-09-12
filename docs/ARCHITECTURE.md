@@ -1,15 +1,15 @@
-# CRS-OCU-Net technical specification
+# RoCU-Net technical specification
 
 ## Problem addressed
 
-The original OCU block increases a one-channel occupancy probability while using
+The original occupancy block increases a one-channel occupancy probability while using
 a shallow encoder guide to choose the four child values. It guarantees local
 mass consistency, but repeated probability-only transitions form a semantic
 bottleneck. It also applies the iterative allocation solver to every parent
 cell, although confident foreground/background interiors do not need a complex
 sub-pixel allocation.
 
-CRS-OCU adds one paper-facing module, the **Confidence-Routed Semantic Occupancy
+RoCU adds one paper-facing module, the **Confidence-Routed Semantic Occupancy
 block**, with three inseparable functions:
 
 1. propagate a thin semantic carrier;
@@ -45,7 +45,7 @@ Because `g` is shared by all four children,
 (1/4) sum_j q_j = (1-g)p + gp = p.
 ```
 
-Therefore confidence routing does not weaken OCU's defining invariant. At
+Therefore confidence routing preserves the local occupancy invariant. At
 deployment, if `u < tau`, the implementation skips bisection and sets all four
 refined children to `p`; this is numerically conservative and removes solver
 iterations from confident cells.
@@ -61,8 +61,8 @@ Z_(l-1)    = LiteMBConv(DSConv(Z_up + E_project))
 ```
 
 `Z_(l-1)` drives boundary, routing and allocation heads and is passed into the
-next CRS-OCU stage. Setting `use_semantic_carrier=false` zeros `Z_up` while
-retaining the current encoder guide, which is the controlled carrier ablation.
+next RoCU stage. Setting `use_semantic_carrier=false` zeros `Z_up` while
+retaining the current encoder guide. The dataset configs enable the carrier.
 
 ## Training objective
 
@@ -91,17 +91,9 @@ It is:
 > decoding and conditional allocation, improving boundary quality while
 > avoiding iterative refinement in confident regions.
 
-The minimum supporting ablations are:
-
-| Variant | Semantic carrier | Confidence routing | Boundary-aware objective |
-|---|---:|---:|---:|
-| Original OCU | No | No | No |
-| CRS without carrier | No | Yes | Yes |
-| CRS without routing | Yes | No | Yes |
-| CRS without boundary objective | Yes | Yes | No |
-| Full CRS-OCU | Yes | Yes | Yes |
+The selected model enables the semantic carrier, confidence routing and
+boundary-aware objective. ColonDB uses the rotation-fix training recipe.
 
 Report Dice, IoU, boundary F1, Params, MACs, latency, FPS, memory, active-cell
 ratio and conservation error. A result is not sufficient if it improves Dice
 but loses the local conservation invariant or has worse measured latency.
-

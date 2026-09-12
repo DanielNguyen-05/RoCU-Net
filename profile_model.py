@@ -4,16 +4,15 @@ import argparse
 import json
 from pathlib import Path
 
-import torch
-
-from ocu_net.config import load_config
-from ocu_net.model import build_model
-from ocu_net.profiler import profile_model
-from ocu_net.utils import get_device, save_json
+from rocu_net.compat import load_checkpoint
+from rocu_net.config import load_config
+from rocu_net.model import build_model
+from rocu_net.profiler import profile_model
+from rocu_net.utils import get_device, save_json
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Profile RoCU efficiency")
+    parser = argparse.ArgumentParser(description="Profile RoCU-Net efficiency")
     parser.add_argument("--config", default="configs/kvasir.yaml")
     parser.add_argument("--checkpoint", default=None)
     parser.add_argument("--device", default="auto", choices=["auto", "cuda", "mps", "cpu"])
@@ -21,21 +20,17 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_checkpoint(path: str | Path, map_location="cpu") -> dict:
-    try:
-        return torch.load(path, map_location=map_location, weights_only=False)
-    except TypeError:
-        return torch.load(path, map_location=map_location)
-
-
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
-    model = build_model(config)
     checkpoint_path = None
     if args.checkpoint:
         checkpoint_path = Path(args.checkpoint).expanduser().resolve()
         checkpoint = load_checkpoint(checkpoint_path)
+        config = checkpoint["config"]
+        config["model"]["pretrained"] = False
+    model = build_model(config)
+    if checkpoint_path is not None:
         model.load_state_dict(checkpoint["model"])
     device = get_device(args.device)
     data_cfg = config["data"]

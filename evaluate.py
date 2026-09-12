@@ -5,17 +5,18 @@ from pathlib import Path
 
 import torch
 
-from ocu_net.config import resolve_project_path
-from ocu_net.data import build_dataloaders, create_or_load_splits
-from ocu_net.engine import evaluate_model, save_per_image_records
-from ocu_net.losses import build_loss
-from ocu_net.model import build_model
-from ocu_net.profiler import profile_model
-from ocu_net.utils import get_device, save_json, set_seed
+from rocu_net.compat import load_checkpoint
+from rocu_net.config import resolve_project_path
+from rocu_net.data import build_dataloaders, create_or_load_splits
+from rocu_net.engine import evaluate_model, save_per_image_records
+from rocu_net.losses import build_loss
+from rocu_net.model import build_model
+from rocu_net.profiler import profile_model
+from rocu_net.utils import get_device, save_json, set_seed
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Evaluate an RoCU checkpoint")
+    parser = argparse.ArgumentParser(description="Evaluate a RoCU-Net checkpoint")
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--split", default="test", choices=["train", "val", "test"])
     parser.add_argument("--data-root", default=None)
@@ -23,13 +24,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--save-predictions", action="store_true")
     parser.add_argument("--profile", action="store_true")
     return parser.parse_args()
-
-
-def load_checkpoint(path: str | Path, map_location="cpu") -> dict:
-    try:
-        return torch.load(path, map_location=map_location, weights_only=False)
-    except TypeError:
-        return torch.load(path, map_location=map_location)
 
 
 def main() -> None:

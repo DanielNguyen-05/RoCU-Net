@@ -13,12 +13,13 @@ import torch
 from torch.nn import functional as F
 from tqdm.auto import tqdm
 
-from ocu_net.config import load_config, resolve_project_path
-from ocu_net.data import JointTransform, discover_pairs, _read_manifest
-from ocu_net.metrics import batch_metrics
-from ocu_net.model import build_model
-from ocu_net.utils import autocast_context, get_device, save_json, set_seed
-from ocu_net.visualization import diagnostics, metric_figures, qualitative, select_samples, training_figure
+from rocu_net.compat import load_checkpoint
+from rocu_net.config import load_config, resolve_project_path
+from rocu_net.data import JointTransform, discover_pairs, _read_manifest
+from rocu_net.metrics import batch_metrics
+from rocu_net.model import build_model
+from rocu_net.utils import autocast_context, get_device, save_json, set_seed
+from rocu_net.visualization import diagnostics, metric_figures, qualitative, select_samples, training_figure
 
 
 def parse_args():
@@ -62,7 +63,7 @@ def load_evaluation_pairs(config, run_dir, split, external_config=None, data_roo
 
 def export_checkpoint(args):
     checkpoint_path = args.checkpoint.expanduser().resolve()
-    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    checkpoint = load_checkpoint(checkpoint_path)
     config = checkpoint["config"]
     pairs = load_evaluation_pairs(config, checkpoint_path.parent, args.split, args.external_config, args.data_root)
     model_config = {**config, "model": {**config["model"], "pretrained": False}}
@@ -96,7 +97,7 @@ def export_checkpoint(args):
                           "target": y[0].numpy().astype(bool), "probability": probability[0,0].cpu().numpy(),
                           "residual": residual[0,0].cpu().numpy()}
                 if "routing_gate_2" in outputs:
-                    block = model.crs2
+                    block = model.rocu2
                     active = (outputs["routing_uncertainty_2"] >= block.uncertainty_threshold
                               if block.routing_enabled and block.hard_routing_inference
                               else torch.ones_like(outputs["routing_uncertainty_2"], dtype=torch.bool))

@@ -100,4 +100,3 @@ class BinarySegmentationMeter:
             "mean": {key: float(np.mean(values)) for key, values in numeric.items()},
             "std": {key: float(np.std(values, ddof=0)) for key, values in numeric.items()},
         }
-

@@ -6,19 +6,20 @@ from pathlib import Path
 import pandas as pd
 import torch
 
-from ocu_net.config import apply_common_overrides, load_config, resolve_project_path, save_config
-from ocu_net.data import build_dataloaders, create_or_load_splits
-from ocu_net.engine import (
+from rocu_net.compat import load_checkpoint
+from rocu_net.config import apply_common_overrides, load_config, resolve_project_path, save_config
+from rocu_net.data import build_dataloaders, create_or_load_splits
+from rocu_net.engine import (
     evaluate_model,
     plot_history,
     save_history,
     save_per_image_records,
     train_one_epoch,
 )
-from ocu_net.losses import build_loss
-from ocu_net.model import build_model
-from ocu_net.profiler import profile_model
-from ocu_net.utils import (
+from rocu_net.losses import build_loss
+from rocu_net.model import build_model
+from rocu_net.profiler import profile_model
+from rocu_net.utils import (
     atomic_torch_save,
     build_grad_scaler,
     get_device,
@@ -41,13 +42,6 @@ def parse_args() -> argparse.Namespace:
     initialization.add_argument("--init-checkpoint", default=None, help="Load model weights only into a new run; reset optimizer/epoch")
     parser.add_argument("--no-test", action="store_true", help="Do not evaluate the held-out test set")
     return parser.parse_args()
-
-
-def load_checkpoint(path: str | Path, map_location="cpu") -> dict:
-    try:
-        return torch.load(path, map_location=map_location, weights_only=False)
-    except TypeError:
-        return torch.load(path, map_location=map_location)
 
 
 def make_optimizer(model: torch.nn.Module, config: dict):
@@ -372,7 +366,7 @@ def main() -> None:
         "experiment": config["experiment"]["name"],
         "implementation": implementation_fingerprint(),
         "model": {
-            "architecture": config["model"].get("architecture", "ocu_net"),
+            "architecture": config["model"].get("architecture", "rocu_net"),
             "backbone": config["model"].get("backbone"),
             "pretrained": config["model"].get("pretrained", False),
         },

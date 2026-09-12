@@ -17,8 +17,9 @@ import torch
 def implementation_fingerprint() -> dict[str, Any]:
     """Record the training implementation even when run outside a Git checkout."""
     root = Path(__file__).resolve().parents[1]
-    names = ("train.py", "ocu_net/model.py", "ocu_net/data.py", "ocu_net/losses.py",
-             "ocu_net/engine.py", "ocu_net/metrics.py", "ocu_net/config.py", "ocu_net/utils.py")
+    names = ("train.py", "rocu_net/model.py", "rocu_net/data.py", "rocu_net/losses.py",
+             "rocu_net/engine.py", "rocu_net/metrics.py", "rocu_net/config.py", "rocu_net/utils.py",
+             "rocu_net/compat.py")
     return {"torch_version": str(torch.__version__),
             "source_sha256": {name: hashlib.sha256((root / name).read_bytes()).hexdigest()
                               for name in names if (root / name).is_file()}}
@@ -73,7 +74,7 @@ def synchronize(device: torch.device) -> None:
 
 
 def setup_logger(log_path: str | Path) -> logging.Logger:
-    logger = logging.getLogger("ocu_net")
+    logger = logging.getLogger("rocu_net")
     logger.setLevel(logging.INFO)
     logger.handlers.clear()
     formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")

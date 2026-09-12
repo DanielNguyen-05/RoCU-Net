@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from rocu_net.compat import canonical_run_name
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build a paper-ready table from run summaries")
@@ -45,7 +47,7 @@ def main() -> None:
         conservation = test.get("occupancy_conservation", {})
         rows.append(
             {
-                "Method": label or payload.get("experiment", path.parent.name),
+                "Method": label or canonical_run_name(payload.get("experiment", path.parent.name)),
                 "Dice": quality.get("dice"),
                 "IoU": quality.get("iou"),
                 "Precision": quality.get("precision"),
