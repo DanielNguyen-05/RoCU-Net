@@ -22,6 +22,7 @@ from ocu_net.utils import (
     atomic_torch_save,
     build_grad_scaler,
     get_device,
+    implementation_fingerprint,
     save_json,
     set_seed,
     setup_logger,
@@ -35,7 +36,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--name", default=None)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--device", default="auto", choices=["auto", "cuda", "mps", "cpu"])
-    parser.add_argument("--resume", default=None, help="Path to last.pt or another training checkpoint")
+    initialization = parser.add_mutually_exclusive_group()
+    initialization.add_argument("--resume", default=None, help="Path to last.pt or another training checkpoint")
+    initialization.add_argument("--init-checkpoint", default=None, help="Load model weights only into a new run; reset optimizer/epoch")
     parser.add_argument("--no-test", action="store_true", help="Do not evaluate the held-out test set")
     return parser.parse_args()
 
@@ -125,6 +128,7 @@ def checkpoint_payload(
         "best_val_dice": float(best_dice),
         "epochs_without_improvement": int(epochs_without_improvement),
         "config": {key: value for key, value in config.items() if not key.startswith("_")},
+        "implementation": implementation_fingerprint(),
     }
 
 
@@ -133,6 +137,8 @@ def main() -> None:
     config = apply_common_overrides(
         load_config(args.config), data_root=args.data_root, name=args.name, seed=args.seed
     )
+    if args.init_checkpoint is not None:
+        config["training"]["init_checkpoint"] = args.init_checkpoint
     device = get_device(args.device)
     seed = int(config["experiment"]["seed"])
     set_seed(seed, deterministic=bool(config["experiment"].get("deterministic", False)))
@@ -145,6 +151,8 @@ def main() -> None:
         run_dir = output_root / str(config["experiment"]["name"])
         resume_path = None
     run_dir.mkdir(parents=True, exist_ok=True)
+    if resume_path is None and any((run_dir / name).exists() for name in ("best.pt", "last.pt")):
+        raise FileExistsError(f"Run already contains checkpoints: {run_dir}. Use --resume or a new --name.")
     logger = setup_logger(run_dir / "train.log")
     save_config(config, run_dir / "config_resolved.yaml")
 
@@ -159,6 +167,8 @@ def main() -> None:
         val_ratio=float(data_cfg.get("val_ratio", 0.1)),
         test_ratio=float(data_cfg.get("test_ratio", 0.1)),
         seed=seed,
+        source_split_dir=(resolve_project_path(data_cfg["split_source"]) if data_cfg.get("split_source") else None),
+        group_identical_images=bool(data_cfg.get("group_identical_images", False)),
     )
     loaders = build_dataloaders(config, splits)
     logger.info(
@@ -170,7 +180,15 @@ def main() -> None:
         run_dir,
     )
 
-    model = build_model(config).to(device)
+    init_path = config["training"].get("init_checkpoint")
+    model_config = config
+    if resume_path is not None or init_path:
+        model_config = {**config, "model": {**config["model"], "pretrained": False}}
+    model = build_model(model_config).to(device)
+    if init_path and resume_path is None:
+        init_path = resolve_project_path(init_path)
+        model.load_state_dict(load_checkpoint(init_path)["model"], strict=True)
+        logger.info("Initialized model weights from %s; optimizer and epoch start fresh", init_path)
     loss_fn = build_loss(config)
     optimizer = make_optimizer(model, config)
     scheduler = make_scheduler(optimizer, config)
@@ -198,6 +216,20 @@ def main() -> None:
             history = pd.read_csv(history_path).to_dict("records")
         logger.info("Resumed %s at epoch %d", resume_path, start_epoch)
 
+    if init_path and resume_path is None:
+        initial_metrics, _, _ = evaluate_model(
+            model, loaders["val"], loss_fn, device,
+            threshold=float(train_cfg.get("threshold", 0.5)), amp=amp_enabled,
+            description="initial validation",
+        )
+        best_dice = float(initial_metrics["mean"]["dice"])
+        atomic_torch_save(
+            checkpoint_payload(model, optimizer, scheduler, scaler, config, 0, best_dice, 0),
+            run_dir / "best.pt",
+        )
+        save_json(initial_metrics, run_dir / "initial_val_metrics.json")
+        logger.info("Initial validation Dice %.4f; keep initialization unless fine-tuning improves it", best_dice)
+
     writer = None
     try:
         from torch.utils.tensorboard import SummaryWriter
@@ -220,6 +252,7 @@ def main() -> None:
             amp=amp_enabled,
             grad_clip_norm=float(train_cfg.get("grad_clip_norm", 0.0)),
             epoch=epoch,
+            freeze_encoder_bn=bool(train_cfg.get("freeze_encoder_bn", False)),
         )
         val_metrics, _, val_losses = evaluate_model(
             model,
@@ -337,6 +370,7 @@ def main() -> None:
     save_json(lightweight, run_dir / "lightweight_metrics.json")
     summary = {
         "experiment": config["experiment"]["name"],
+        "implementation": implementation_fingerprint(),
         "model": {
             "architecture": config["model"].get("architecture", "ocu_net"),
             "backbone": config["model"].get("backbone"),

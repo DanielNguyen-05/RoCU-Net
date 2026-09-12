@@ -12,3 +12,5 @@ dataset/
 runs/*
 !runs/.gitkeep
 figures/*
+logs/*
+reports/*

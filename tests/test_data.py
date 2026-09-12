@@ -5,6 +5,7 @@ from PIL import Image
 
 from ocu_net.data import JointTransform, create_or_load_splits, discover_pairs
 from ocu_net.config import load_config
+from unittest.mock import patch
 
 
 def _make_tiny_kvasir(root: Path, count: int = 10):
@@ -69,3 +70,62 @@ def test_clinicdb_png_and_tif(tmp_path):
         sample = PolypSegDataset(splits["train"], JointTransform((32, 32)))[0]
         assert sample["image"].shape == (3, 32, 32)
         assert set(sample["mask"].unique().tolist()) == {0.0, 1.0}
+
+
+def test_right_angle_rotation_preserves_edge_polyp():
+    mask = Image.new("L", (60, 20), 0)
+    mask.paste(255, (0, 0, 8, 8))
+    image = mask.convert("RGB")
+    transform = JointTransform((60, 20), {"rotate_90_probability": 1.0}, train=True)
+    with patch("ocu_net.data.random.choice", return_value=Image.Transpose.ROTATE_90):
+        _, actual = transform(image, mask)
+    expected = np.asarray(mask.transpose(Image.Transpose.ROTATE_90)) > 127
+    assert np.array_equal(actual[0].numpy(), expected)
+    assert actual.sum() == 64
+    assert not (np.asarray(mask.rotate(90)) > 127).any()  # Original bug loses this polyp.
+
+
+def test_foreground_crop_alignment_and_retention():
+    mask = Image.new("L", (60, 40), 0)
+    mask.paste(255, (25, 15, 35, 25))
+    transform = JointTransform((32, 32), {"crop_scale": [0.5, 0.8], "crop_min_foreground_retained": 0.75}, train=True)
+    for _ in range(10):
+        image, cropped = transform._random_crop(mask.convert("RGB"), mask)
+        actual = np.asarray(cropped) > 127
+        assert actual.sum() >= 75
+        assert np.array_equal(np.asarray(image)[:, :, 0], np.asarray(cropped))
+
+
+def test_finetune_reuses_original_splits_and_rejects_overlap(tmp_path):
+    root = tmp_path / "data"
+    _make_tiny_kvasir(root)
+    source = tmp_path / "original"
+    original = create_or_load_splits(root, source, seed=42)
+    reused = create_or_load_splits(root, tmp_path / "new", seed=13, source_split_dir=source)
+    assert original == reused
+    import shutil
+    shutil.copyfile(source / "val.csv", source / "test.csv")
+    try:
+        create_or_load_splits(root, tmp_path / "bad", source_split_dir=source)
+    except ValueError as error:
+        assert "overlapping" in str(error)
+    else:
+        raise AssertionError("Overlapping source splits accepted")
+
+
+def test_identical_images_stay_in_one_split(tmp_path):
+    import shutil
+    from ocu_net.data import image_content_hash
+    root = tmp_path / "data"
+    _make_tiny_kvasir(root, count=10)
+    shutil.copyfile(root / "images/case_00.jpg", root / "images/duplicate.jpg")
+    shutil.copyfile(root / "masks/case_00.png", root / "masks/duplicate.png")
+    splits = create_or_load_splits(root, tmp_path / "splits", group_identical_images=True)
+    owners = {}
+    for name, pairs in splits.items():
+        for pair in pairs:
+            key = image_content_hash(pair.image)
+            assert key not in owners or owners[key] == name
+            owners[key] = name
+    assert sum(map(len, splits.values())) == 11
+    assert create_or_load_splits(root, tmp_path / "splits", group_identical_images=True) == splits

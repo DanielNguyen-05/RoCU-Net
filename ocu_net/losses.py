@@ -19,6 +19,18 @@ def soft_dice_loss(prediction: torch.Tensor, target: torch.Tensor, smooth: float
     return 1.0 - dice.mean()
 
 
+def soft_tversky_loss(prediction: torch.Tensor, target: torch.Tensor, beta: float = 0.7) -> torch.Tensor:
+    """Per-image region loss; beta > 0.5 penalizes missed foreground more."""
+    if not 0 < beta < 1:
+        raise ValueError("tversky_beta must be between 0 and 1")
+    prediction, target = prediction.float(), target.float()
+    dims = tuple(range(1, prediction.ndim))
+    tp = (prediction * target).sum(dim=dims)
+    fp = (prediction * (1 - target)).sum(dim=dims)
+    fn = ((1 - prediction) * target).sum(dim=dims)
+    return (1 - (tp + 1.0) / (tp + (1 - beta) * fp + beta * fn + 1.0)).mean()
+
+
 def weighted_structure_loss(
     prediction: torch.Tensor,
     target: torch.Tensor,
@@ -69,6 +81,8 @@ class MultiScaleOccupancyLoss(nn.Module):
         boundary_weight: float = 0.0,
         routing_weight: float = 0.0,
         boundary_kernel_size: int = 5,
+        tversky_weight: float = 0.0,
+        tversky_beta: float = 0.7,
     ):
         super().__init__()
         self.bce_weight = float(bce_weight)
@@ -79,11 +93,16 @@ class MultiScaleOccupancyLoss(nn.Module):
         self.boundary_weight = float(boundary_weight)
         self.routing_weight = float(routing_weight)
         self.boundary_kernel_size = int(boundary_kernel_size)
+        self.tversky_weight = float(tversky_weight)
+        self.tversky_beta = float(tversky_beta)
 
     def _scale_loss(self, prediction: torch.Tensor, target: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         bce = probability_bce(prediction, target)
         dice = soft_dice_loss(prediction, target)
-        return self.bce_weight * bce + self.dice_weight * dice, bce, dice
+        loss = self.bce_weight * bce + self.dice_weight * dice
+        if self.tversky_weight:
+            loss = loss + self.tversky_weight * soft_tversky_loss(prediction, target, self.tversky_beta)
+        return loss, bce, dice
 
     def forward(self, outputs: dict[str, torch.Tensor], target: torch.Tensor) -> tuple[torch.Tensor, dict[str, float]]:
         target176 = F.adaptive_avg_pool2d(target, outputs["p176"].shape[-2:])
@@ -154,4 +173,6 @@ def build_loss(config: dict) -> MultiScaleOccupancyLoss:
         boundary_weight=cfg.get("boundary_weight", 0.0),
         routing_weight=cfg.get("routing_weight", 0.0),
         boundary_kernel_size=cfg.get("boundary_kernel_size", 5),
+        tversky_weight=cfg.get("tversky_weight", 0.0),
+        tversky_beta=cfg.get("tversky_beta", 0.7),
     )

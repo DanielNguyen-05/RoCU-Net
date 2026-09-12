@@ -29,8 +29,13 @@ def train_one_epoch(
     amp: bool = True,
     grad_clip_norm: float = 0.0,
     epoch: int = 0,
+    freeze_encoder_bn: bool = False,
 ) -> dict[str, float]:
     model.train()
+    if freeze_encoder_bn:
+        for module in model.encoder.modules():
+            if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
+                module.eval()
     totals: dict[str, float] = defaultdict(float)
     n_samples = 0
     amp_enabled = bool(amp and device.type == "cuda")

@@ -1,5 +1,5 @@
 import torch
-from ocu_net.losses import probability_bce, weighted_structure_loss
+from ocu_net.losses import probability_bce, weighted_structure_loss, soft_tversky_loss
 
 
 def test_probability_bce_matches_reference_and_gradients():
@@ -21,3 +21,14 @@ def test_structure_loss_rewards_correct_confident_predictions():
     assert loss < weighted_structure_loss(bad, target)
     loss.backward()
     assert torch.isfinite(good.grad).all()
+
+
+def test_tversky_penalizes_missed_foreground_more_than_equal_false_positive():
+    target = torch.tensor([[[[1.0, 1.0, 0.0, 0.0]]]])
+    missed = torch.tensor([[[[1.0, 0.0, 0.0, 0.0]]]], requires_grad=True)
+    extra = torch.tensor([[[[1.0, 1.0, 1.0, 0.0]]]])
+    loss = soft_tversky_loss(missed, target, beta=0.7)
+    assert loss > soft_tversky_loss(extra, target, beta=0.7)
+    loss.backward()
+    assert torch.isfinite(missed.grad).all()
+    assert missed.grad[0, 0, 0, 1] < 0

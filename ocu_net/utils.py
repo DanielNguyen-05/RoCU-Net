@@ -4,11 +4,24 @@ import json
 import logging
 import os
 import random
+import hashlib
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
+
+
+@lru_cache(maxsize=1)
+def implementation_fingerprint() -> dict[str, Any]:
+    """Record the training implementation even when run outside a Git checkout."""
+    root = Path(__file__).resolve().parents[1]
+    names = ("train.py", "ocu_net/model.py", "ocu_net/data.py", "ocu_net/losses.py",
+             "ocu_net/engine.py", "ocu_net/metrics.py", "ocu_net/config.py", "ocu_net/utils.py")
+    return {"torch_version": str(torch.__version__),
+            "source_sha256": {name: hashlib.sha256((root / name).read_bytes()).hexdigest()
+                              for name in names if (root / name).is_file()}}
 
 
 def set_seed(seed: int, deterministic: bool = False) -> None:
@@ -100,4 +113,3 @@ def autocast_context(enabled: bool):
         return torch.amp.autocast(device_type="cuda", enabled=enabled)
     except AttributeError:
         return torch.cuda.amp.autocast(enabled=enabled)
-

@@ -395,3 +395,54 @@ Metric correction in this update: boundary F1 now returns 0 when both boundary
 precision and recall are 0 (disjoint contours). The earlier code returned 1
 in that case. Re-evaluate old checkpoints before reporting boundary F1; Dice
 and IoU calculations are unchanged.
+
+## 12. ColonDB audit and revised training
+
+See [the evidence-backed ColonDB report](reports/colondb_audit/REPORT.md) for
+checkpoint checks, failure cases, the LV-UNet metric/split mismatch, and the
+controlled validation-only routing comparison. Original run files are preserved.
+
+The revised augmentation preserves the full rectangular image when rotating.
+The candidate ColonDB configs add foreground-retaining random crops and a
+moderate Tversky term to reduce missed foreground. They reuse the original
+`runs/rocu_cvc_colondb_seed42/splits` files and create separate run directories.
+
+```bash
+# Fine-tune your existing ColonDB checkpoint with a fresh optimizer.
+python train.py --config configs/cvc_colondb_finetune.yaml --device cuda
+
+# Alternatively, train the revised recipe from ImageNet initialization.
+python train.py --config configs/cvc_colondb_v2.yaml --device cuda
+```
+
+Both configs disable automatic test evaluation while comparing recipes on
+validation. After choosing the recipe:
+
+```bash
+python evaluate.py --checkpoint runs/rocu_cvc_colondb_finetune_seed42/best.pt --split test --save-predictions --device cuda
+```
+
+`--init-checkpoint` loads weights only into a new run, whereas `--resume` restores
+optimizer/scheduler/epoch. Fine-tuning evaluates the initial model first and
+keeps those weights as best if no later epoch improves validation Dice. Starting
+a new run in a directory already containing checkpoints now raises an error;
+use a new `--name` or resume explicitly.
+
+Optional loss settings: `loss.tversky_weight` (default 0, preserving existing
+loss behavior) and `loss.tversky_beta` (default 0.7). `training.freeze_encoder_bn`
+freezes running statistics only and is enabled in the fine-tuning config.
+Rotation corrections affect all future training; prediction of old checkpoints
+is unchanged. A short real-data CPU pilot is a validation check, not a complete
+GPU training experiment or a new test-set claim.
+
+The downloaded ColonDB data also contains exact duplicate images across saved
+splits (346 distinct RGB images among 380 files). For a new comparison that
+keeps identical images together, use `configs/cvc_colondb_grouped.yaml` and
+train all baselines on the same new manifests. This changes the held-out set:
+do not initialize it from the old ColonDB checkpoint. It does not provide
+video/patient grouping or resolve differing annotations of the same image.
+
+The initial three-epoch CPU fine-tuning pilot did **not** improve validation
+Dice (0.879202 initially versus 0.876031 at epoch 3). These configs remain
+experimental; the rotation correction is a verified software fix, while
+accuracy benefits from the new recipe still require controlled training.
