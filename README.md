@@ -56,6 +56,10 @@ python -m venv .venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+# Uninstall the current incompatible versions
+pip uninstall torch torchvision torchaudio -y
+# Install PyTorch compiled for CUDA 12.1 (compatible with your 12.5 driver)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
 
 The paper configuration uses ImageNet-pretrained MobileNetV3-Large and may
@@ -90,7 +94,7 @@ selection never inspect the held-out test split.
 Main CRS-OCU-Net experiment:
 
 ```bash
-python train.py --config configs/kvasir.yaml --device cuda
+nohup python train.py --config configs/*.yaml --device cuda > logs/RoCUNet_<dataset>.log 2>&1 &
 ```
 
 Useful overrides:

@@ -30,7 +30,7 @@ from ocu_net.utils import (
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train OCU-Net or CRS-OCU-Net on paired polyp segmentation datasets")
+    parser = argparse.ArgumentParser(description="Train RoCU-Net on paired polyp segmentation datasets")
     parser.add_argument("--config", default="configs/kvasir.yaml")
     parser.add_argument("--data-root", default=None)
     parser.add_argument("--name", default=None)

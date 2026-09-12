@@ -15,7 +15,7 @@ from ocu_net.utils import get_device, save_json, set_seed
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Evaluate an OCU/CRS-OCU checkpoint")
+    parser = argparse.ArgumentParser(description="Evaluate an RoCU checkpoint")
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--split", default="test", choices=["train", "val", "test"])
     parser.add_argument("--data-root", default=None)
