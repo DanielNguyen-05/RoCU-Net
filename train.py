@@ -18,6 +18,7 @@ from rocu_net.engine import (
 )
 from rocu_net.losses import build_loss
 from rocu_net.model import build_model
+from rocu_net.inference import inference_model
 from rocu_net.profiler import profile_model
 from rocu_net.utils import (
     atomic_torch_save,
@@ -183,6 +184,7 @@ def main() -> None:
         init_path = resolve_project_path(init_path)
         model.load_state_dict(load_checkpoint(init_path)["model"], strict=True)
         logger.info("Initialized model weights from %s; optimizer and epoch start fresh", init_path)
+    evaluation_model = inference_model(model, config)
     loss_fn = build_loss(config)
     optimizer = make_optimizer(model, config)
     scheduler = make_scheduler(optimizer, config)
@@ -212,7 +214,7 @@ def main() -> None:
 
     if init_path and resume_path is None:
         initial_metrics, _, _ = evaluate_model(
-            model, loaders["val"], loss_fn, device,
+            evaluation_model, loaders["val"], loss_fn, device,
             threshold=float(train_cfg.get("threshold", 0.5)), amp=amp_enabled,
             description="initial validation",
         )
@@ -247,9 +249,10 @@ def main() -> None:
             grad_clip_norm=float(train_cfg.get("grad_clip_norm", 0.0)),
             epoch=epoch,
             freeze_encoder_bn=bool(train_cfg.get("freeze_encoder_bn", False)),
+            multi_scale_factors=tuple(train_cfg.get("multi_scale_factors", [1.0])),
         )
         val_metrics, _, val_losses = evaluate_model(
-            model,
+            evaluation_model,
             loaders["val"],
             loss_fn,
             device,
@@ -312,7 +315,7 @@ def main() -> None:
     best_checkpoint = load_checkpoint(best_path, map_location=device)
     model.load_state_dict(best_checkpoint["model"])
     val_metrics, val_records, _ = evaluate_model(
-        model,
+        evaluation_model,
         loaders["val"],
         loss_fn,
         device,
@@ -322,6 +325,12 @@ def main() -> None:
     )
     save_json(val_metrics, run_dir / "val_metrics.json")
     save_per_image_records(val_records, run_dir / "val_per_image.csv")
+    logger.info(
+        "Best validation (epoch %d) | Dice %.4f | IoU %.4f",
+        int(best_checkpoint["epoch"]),
+        val_metrics["mean"]["dice"],
+        val_metrics["mean"]["iou"],
+    )
 
     test_metrics = None
     should_test = bool(train_cfg.get("test_after_training", True)) and not args.no_test
@@ -332,7 +341,7 @@ def main() -> None:
             else None
         )
         test_metrics, test_records, _ = evaluate_model(
-            model,
+            evaluation_model,
             loaders["test"],
             loss_fn,
             device,
@@ -349,10 +358,14 @@ def main() -> None:
             test_metrics["mean"]["iou"],
             test_metrics["mean"]["mae"],
         )
+    else:
+        reason = "--no-test" if args.no_test else "training.test_after_training=false"
+        logger.info("Held-out test skipped (%s). No test metrics were computed.", reason)
+        logger.info('Run test separately: python evaluate.py --checkpoint "%s" --split test', best_path)
 
     profile_cfg = config.get("profiling", {})
     lightweight = profile_model(
-        model,
+        evaluation_model,
         device,
         image_size=tuple(int(v) for v in data_cfg["image_size"]),
         batch_size=int(profile_cfg.get("batch_size", 1)),
@@ -377,6 +390,7 @@ def main() -> None:
             "validation_images": len(splits["val"]),
             "test_images": len(splits["test"]),
             "threshold": threshold,
+            "tta": evaluation_model.tta,
         },
         "best_epoch": int(best_checkpoint["epoch"]),
         "best_validation": val_metrics,

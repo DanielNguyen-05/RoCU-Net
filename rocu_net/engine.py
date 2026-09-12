@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
+import random
 
 import numpy as np
 import pandas as pd
@@ -30,7 +31,10 @@ def train_one_epoch(
     grad_clip_norm: float = 0.0,
     epoch: int = 0,
     freeze_encoder_bn: bool = False,
+    multi_scale_factors: tuple[float, ...] = (1.0,),
 ) -> dict[str, float]:
+    if not multi_scale_factors or any(not np.isfinite(s) or s <= 0 for s in multi_scale_factors):
+        raise ValueError("multi_scale_factors must contain positive finite numbers")
     model.train()
     if freeze_encoder_bn:
         for module in model.encoder.modules():
@@ -43,6 +47,12 @@ def train_one_epoch(
     for batch in progress:
         image = batch["image"].to(device, non_blocking=True)
         target = batch["mask"].to(device, non_blocking=True)
+        if tuple(multi_scale_factors) != (1.0,):
+            scale = random.choice(multi_scale_factors)
+            size = tuple(max(32, round(v * scale / 16) * 16) for v in image.shape[-2:])
+            if size != image.shape[-2:]:
+                image = F.interpolate(image, size=size, mode="bilinear", align_corners=False)
+                target = F.interpolate(target, size=size, mode="nearest")
         batch_size = image.shape[0]
         optimizer.zero_grad(set_to_none=True)
         with autocast_context(amp_enabled):
@@ -118,6 +128,8 @@ def evaluate_model(
                 Image.fromarray(prob, mode="L").save(output_dir / "probability" / f"{sample_id}.png")
                 Image.fromarray(binary, mode="L").save(output_dir / "binary" / f"{sample_id}.png")
     summary = meter.summary()
+    tta = getattr(model, "tta", "none")
+    summary["inference"] = {"tta": tta, "forward_passes": 4 if tta == "flip" else 1}
     summary["occupancy_conservation"] = _average_components(conservation_totals, n_samples)
     if routing_totals:
         summary["confidence_routing"] = _average_components(routing_totals, n_samples)

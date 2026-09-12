@@ -7,6 +7,7 @@ from pathlib import Path
 from rocu_net.compat import load_checkpoint
 from rocu_net.config import load_config
 from rocu_net.model import build_model
+from rocu_net.inference import inference_model
 from rocu_net.profiler import profile_model
 from rocu_net.utils import get_device, save_json
 
@@ -17,6 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", default=None)
     parser.add_argument("--device", default="auto", choices=["auto", "cuda", "mps", "cpu"])
     parser.add_argument("--output", default=None)
+    parser.add_argument("--tta", choices=["none", "flip"], default=None)
     return parser.parse_args()
 
 
@@ -32,6 +34,7 @@ def main() -> None:
     model = build_model(config)
     if checkpoint_path is not None:
         model.load_state_dict(checkpoint["model"])
+    model = inference_model(model, config, args.tta)
     device = get_device(args.device)
     data_cfg = config["data"]
     profile_cfg = config.get("profiling", {})

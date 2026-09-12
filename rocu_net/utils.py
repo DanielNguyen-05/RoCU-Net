@@ -19,7 +19,7 @@ def implementation_fingerprint() -> dict[str, Any]:
     root = Path(__file__).resolve().parents[1]
     names = ("train.py", "rocu_net/model.py", "rocu_net/data.py", "rocu_net/losses.py",
              "rocu_net/engine.py", "rocu_net/metrics.py", "rocu_net/config.py", "rocu_net/utils.py",
-             "rocu_net/compat.py")
+             "rocu_net/compat.py", "rocu_net/inference.py")
     return {"torch_version": str(torch.__version__),
             "source_sha256": {name: hashlib.sha256((root / name).read_bytes()).hexdigest()
                               for name in names if (root / name).is_file()}}

@@ -392,7 +392,7 @@ and IoU calculations are unchanged.
 
 ## 12. Selected ColonDB result
 
-`configs/cvc_colondb.yaml` now resolves to the exact configuration of
+`configs/cvc_colondb.yaml` uses the training settings of
 `rocu_cvc_colondb_rotation_fix_seed42`. It uses corrected rotations, the original
 loss and augmentation settings, and the original 304/38/38 split. The reported
 validation results are Dice **0.8837**, IoU **0.8102**, recall **0.8953**,
@@ -406,8 +406,11 @@ python visualize.py --checkpoint runs/rocu_cvc_colondb_rotation_fix_seed42/best.
 ```
 
 The winning run is currently on the server; use those commands there, or copy
-its folder (including `best.pt` and `splits/`) locally. The original config's
-`test_after_training: false` is retained; test is run explicitly as above.
+its folder (including `best.pt` and `splits/`) locally. New training runs enable
+`test_after_training: true`: after selecting `best.pt` using validation, training
+evaluates the held-out test split and logs `Test | Dice ... | IoU ... | MAE ...`.
+Runs completed with testing disabled need only the separate evaluate command
+above; retraining is unnecessary. Use the test scores for the results table.
 
 To reproduce training, keep `runs/rocu_cvc_colondb_seed42/splits/` available and
 use a fresh output name if the winning run already exists:
@@ -415,6 +418,25 @@ use a fresh output name if the winning run already exists:
 ```bash
 python train.py --config configs/cvc_colondb.yaml --name rocu_cvc_colondb_rotation_fix_repeat --device cuda
 ```
+
+## 13. ColonDB refinement from the latest checkpoint
+
+The newly downloaded epoch-92 run has server test Dice 0.8397. Four-view flip
+averaging improved the same checkpoint's CPU test Dice from 0.8399 to 0.8516,
+after selection on validation. See [the refinement report](docs/COLONDB_REFINEMENT.md)
+for exact metrics, compute costs and commands for evaluation and figures.
+
+To fine-tune this checkpoint in one new run with the original splits:
+
+```bash
+python scripts/refine_colondb.py --checkpoint runs/rocu_cvc_colondb_seed42/best.pt --device cuda
+```
+
+This uses a smaller learning rate, frozen encoder BN statistics and multiple
+training image sizes. The generated config and results live under
+`runs/rocu_cvc_colondb_refined_seed42/`. Fine-tuning gains have not yet been
+measured on the real dataset; the initial checkpoint remains the fallback when
+validation does not improve. TTA is recorded and profiled as four forward passes.
 
 Earlier audit reports and run outputs are historical records. Their experimental
 config commands are superseded by this section.

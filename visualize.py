@@ -18,6 +18,7 @@ from rocu_net.config import load_config, resolve_project_path
 from rocu_net.data import JointTransform, discover_pairs, _read_manifest
 from rocu_net.metrics import batch_metrics
 from rocu_net.model import build_model
+from rocu_net.inference import inference_model
 from rocu_net.utils import autocast_context, get_device, save_json, set_seed
 from rocu_net.visualization import diagnostics, metric_figures, qualitative, select_samples, training_figure
 
@@ -34,6 +35,7 @@ def parse_args():
     parser.add_argument("--sample-ids", nargs="+", help="Explicit sample IDs override selection")
     parser.add_argument("--num-samples", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--tta", choices=["none", "flip"], default=None)
     parser.add_argument("--dpi", type=int, default=300)
     parser.add_argument("--device", choices=["auto", "cuda", "mps", "cpu"], default="auto")
     args = parser.parse_args()
@@ -71,6 +73,7 @@ def export_checkpoint(args):
     set_seed(args.seed)
     model = build_model(model_config).to(device).eval()
     model.load_state_dict(checkpoint["model"])
+    model = inference_model(model, config, args.tta)
     transform = JointTransform(tuple(config["data"]["image_size"]), train=False)
     threshold = float(config["training"].get("threshold", 0.5))
     amp = bool(config["training"].get("amp", True) and device.type == "cuda")
@@ -101,6 +104,7 @@ def export_checkpoint(args):
                     active = (outputs["routing_uncertainty_2"] >= block.uncertainty_threshold
                               if block.routing_enabled and block.hard_routing_inference
                               else torch.ones_like(outputs["routing_uncertainty_2"], dtype=torch.bool))
+                    active = outputs.get("routing_active_2", active)
                     sample.update(routing=outputs["routing_gate_2"][0,0].float().cpu().numpy(),
                                   boundary=outputs["boundary_full"][0,0].float().cpu().numpy(),
                                   active=active[0,0].cpu().numpy())
@@ -137,15 +141,18 @@ def export_checkpoint(args):
                    "selected_ids": selected_ids, "selection_seed": args.seed,
                    "image_size": config['data']['image_size'], "threshold": threshold,
                    "amp": amp, "device": str(device), "n_images": len(frame),
+                   "tta": model.tta,
                    "mean": numeric.mean().to_dict(), "std": numeric.std(ddof=0).to_dict()}, args.output / "figure_metadata.json")
         frame.set_index('sample_id').loc[selected_ids].to_csv(args.output / "selected_samples.csv")
         (args.output / "captions.txt").write_text(
             f"Qualitative segmentation on {protocol}. Rows selected using {selection} (seed {args.seed}); sample IDs and per-image metrics accompany this figure. "
             f"Input and masks are shown at the evaluation resolution {config['data']['image_size']}; threshold={threshold}. "
+            f"Inference TTA: {model.tta}. "
             "Columns show input, ground truth, RoCU-Net prediction, contour detail cropped to the union of target and prediction, TP/FP/FN errors, and foreground probability. "
             "The rectangle in the input defines the contour crop. TP green, FP orange, FN purple, TN black; GT contour blue, prediction contour orange.\n\n"
             "Mechanism: auxiliary boundary probability, soft routing gate, solver-active parent cells and absolute |avgpool(P_full)-P_half|. "
             "Routing maps are internal diagnostics, not calibrated confidence or an explanation of causality. Solver-active cells depend on the checkpoint's inference routing settings. "
+            "With flip TTA, solver-active maps show the fraction of views using the solver. "
             "These maps illustrate routing and conservation; speed gains require timed comparisons and ablations.\n\n"
             "Metric distribution: all evaluated images, including failure cases; no filtering by quality. Foreground area is measured from resized ground truth. "
             "Boxplots show median, quartiles, whiskers/outliers and mean triangles. No baseline superiority claim is established by these figures alone.\n")

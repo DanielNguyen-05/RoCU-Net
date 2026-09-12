@@ -11,6 +11,7 @@ from rocu_net.data import build_dataloaders, create_or_load_splits
 from rocu_net.engine import evaluate_model, save_per_image_records
 from rocu_net.losses import build_loss
 from rocu_net.model import build_model
+from rocu_net.inference import inference_model
 from rocu_net.profiler import profile_model
 from rocu_net.utils import get_device, save_json, set_seed
 
@@ -23,6 +24,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="auto", choices=["auto", "cuda", "mps", "cpu"])
     parser.add_argument("--save-predictions", action="store_true")
     parser.add_argument("--profile", action="store_true")
+    parser.add_argument("--tta", choices=["none", "flip"], default=None)
+    parser.add_argument("--output-dir", type=Path, default=None)
     return parser.parse_args()
 
 
@@ -54,9 +57,11 @@ def main() -> None:
     model_config = {**config, "model": {**config["model"], "pretrained": False}}
     model = build_model(model_config).to(device)
     model.load_state_dict(checkpoint["model"])
+    model = inference_model(model, config, args.tta)
+    output_dir = args.output_dir or (run_dir / "evaluation_flip" if model.tta == "flip" else run_dir)
     loss_fn = build_loss(config)
     threshold = float(config["training"].get("threshold", 0.5))
-    prediction_dir = run_dir / f"{args.split}_predictions" if args.save_predictions else None
+    prediction_dir = output_dir / f"{args.split}_predictions" if args.save_predictions else None
     metrics, records, losses = evaluate_model(
         model,
         loaders[args.split],
@@ -68,9 +73,14 @@ def main() -> None:
         prediction_dir=prediction_dir,
     )
     metrics["loss"] = losses
-    save_json(metrics, run_dir / f"{args.split}_metrics.json")
-    save_per_image_records(records, run_dir / f"{args.split}_per_image.csv")
-    print(f"{args.split}: Dice={metrics['mean']['dice']:.4f}, IoU={metrics['mean']['iou']:.4f}")
+    save_json(metrics, output_dir / f"{args.split}_metrics.json")
+    save_per_image_records(records, output_dir / f"{args.split}_per_image.csv")
+    print(f"Checkpoint: {checkpoint_path} | epoch {checkpoint['epoch']} | TTA {model.tta}")
+    print(
+        f"{args.split.capitalize()} | Dice {metrics['mean']['dice']:.4f} | "
+        f"IoU {metrics['mean']['iou']:.4f} | MAE {metrics['mean']['mae']:.4f}"
+    )
+    print(f"Results saved to {output_dir}")
 
     if args.profile:
         profile_cfg = config.get("profiling", {})
@@ -84,7 +94,7 @@ def main() -> None:
             benchmark_iterations=int(profile_cfg.get("benchmark_iterations", 100)),
             checkpoint_path=checkpoint_path,
         )
-        save_json(lightweight, run_dir / "lightweight_metrics.json")
+        save_json(lightweight, output_dir / "lightweight_metrics.json")
         print(
             f"Params={lightweight['parameters']['millions']:.3f}M, "
             f"GMACs={lightweight['computation']['gmacs_per_image']:.3f}, "

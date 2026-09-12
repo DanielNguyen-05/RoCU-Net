@@ -10,6 +10,7 @@ from PIL import Image
 from rocu_net.compat import load_checkpoint
 from rocu_net.data import IMAGE_EXTENSIONS, JointTransform
 from rocu_net.model import build_model
+from rocu_net.inference import inference_model
 from rocu_net.utils import autocast_context, get_device
 
 
@@ -19,6 +20,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", required=True, help="Image file or directory")
     parser.add_argument("--output", default="predictions")
     parser.add_argument("--threshold", type=float, default=None)
+    parser.add_argument("--tta", choices=["none", "flip"], default=None)
     parser.add_argument("--device", default="auto", choices=["auto", "cuda", "mps", "cpu"])
     return parser.parse_args()
 
@@ -78,7 +80,7 @@ def main() -> None:
     model_config = {**config, "model": {**config["model"], "pretrained": False}}
     model = build_model(model_config).to(device)
     model.load_state_dict(checkpoint["model"])
-    model.eval()
+    model = inference_model(model, config, args.tta)
     image_size = tuple(int(value) for value in config["data"]["image_size"])
     transform = JointTransform(image_size, train=False)
     threshold = (

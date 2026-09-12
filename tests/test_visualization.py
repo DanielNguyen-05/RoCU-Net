@@ -48,8 +48,5 @@ def test_new_dataset_configs_inherit_training_settings():
     for name, dataset in [("cvc_colondb", "CVC-ColonDB"), ("etis", "ETIS")]:
         cfg = load_config(root / f"configs/{name}.yaml")
         assert cfg["data"]["root"] == f"dataset/{dataset}"
-        expected_training = dict(base["training"])
-        if name == "cvc_colondb":
-            expected_training["test_after_training"] = False
-        assert cfg["training"] == expected_training
+        assert cfg["training"] == base["training"]
         assert cfg["experiment"]["name"] != base["experiment"]["name"]

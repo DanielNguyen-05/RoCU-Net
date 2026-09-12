@@ -17,4 +17,8 @@ data:
 # Rotation correction is implemented in JointTransform for every training run.
 # Inherit the original augmentation/loss: no random crops or Tversky term.
 training:
-  test_after_training: false
+  test_after_training: true
+
+# Selected using validation. Four aligned flip views; profile this policy too.
+inference:
+  tta: flip

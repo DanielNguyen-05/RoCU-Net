@@ -196,6 +196,10 @@ def profile_model(
     elif hasattr(model, "rocu1"):
         solver_iterations = int(model.rocu1.solver_iterations)
     result = {
+        "inference": {
+            "tta": getattr(model, "tta", "none"),
+            "forward_passes": 4 if getattr(model, "tta", "none") == "flip" else 1,
+        },
         "input": {
             "shape": [batch_size, in_channels, image_size[0], image_size[1]],
             "batch_size": batch_size,
