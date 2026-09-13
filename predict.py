@@ -93,7 +93,7 @@ def main() -> None:
     source = Path(args.input).expanduser().resolve()
     destination = Path(args.output).expanduser().resolve()
     images = discover_images(source)
-    amp_enabled = bool(config["training"].get("amp", True) and device.type == "cuda")
+    amp_enabled = bool(config["training"].get("eval_amp", config["training"].get("amp", True)) and device.type == "cuda")
 
     with torch.inference_mode():
         for index, path in enumerate(images, start=1):

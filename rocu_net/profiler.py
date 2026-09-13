@@ -159,12 +159,14 @@ def profile_model(
             int(diagnostic_outputs[key].numel())
             for key in ("routing_gate_1", "routing_gate_2")
         ]
-        total_cells = sum(gate_cells)
+        constraint_enabled = bool(getattr(getattr(model, "rocu1", None), "occupancy_constraint", True))
+        total_cells = sum(gate_cells) if constraint_enabled else 0
         active_cells = sum(
             int(round(fraction * cells))
             for fraction, cells in zip(fractions, gate_cells)
         )
         routing = {
+            "occupancy_constraint": constraint_enabled,
             "stage1_active_fraction": fractions[0],
             "stage2_active_fraction": fractions[1],
             "stage1_gate_mean": gate_means[0],
@@ -194,7 +196,7 @@ def profile_model(
     if hasattr(model, "occupancy1"):
         solver_iterations = int(model.occupancy1.solver_iterations)
     elif hasattr(model, "rocu1"):
-        solver_iterations = int(model.rocu1.solver_iterations)
+        solver_iterations = int(model.rocu1.solver_iterations) if model.rocu1.occupancy_constraint else 0
     result = {
         "inference": {
             "tta": getattr(model, "tta", "none"),

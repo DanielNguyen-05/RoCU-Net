@@ -68,7 +68,7 @@ def main() -> None:
         loss_fn,
         device,
         threshold=threshold,
-        amp=bool(config["training"].get("amp", True)),
+        amp=bool(config["training"].get("eval_amp", config["training"].get("amp", True))),
         description=args.split,
         prediction_dir=prediction_dir,
     )

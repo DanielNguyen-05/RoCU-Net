@@ -76,7 +76,7 @@ def export_checkpoint(args):
     model = inference_model(model, config, args.tta)
     transform = JointTransform(tuple(config["data"]["image_size"]), train=False)
     threshold = float(config["training"].get("threshold", 0.5))
-    amp = bool(config["training"].get("amp", True) and device.type == "cuda")
+    amp = bool(config["training"].get("eval_amp", config["training"].get("amp", True)) and device.type == "cuda")
     records = []
     args.output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="rocu-figures-") as cache:
@@ -105,6 +105,8 @@ def export_checkpoint(args):
                               if block.routing_enabled and block.hard_routing_inference
                               else torch.ones_like(outputs["routing_uncertainty_2"], dtype=torch.bool))
                     active = outputs.get("routing_active_2", active)
+                    if not getattr(block, "occupancy_constraint", True):
+                        active = torch.zeros_like(active)
                     sample.update(routing=outputs["routing_gate_2"][0,0].float().cpu().numpy(),
                                   boundary=outputs["boundary_full"][0,0].float().cpu().numpy(),
                                   active=active[0,0].cpu().numpy())

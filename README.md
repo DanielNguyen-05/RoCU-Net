@@ -142,7 +142,16 @@ python profile_model.py --config configs/kvasir.yaml --device cuda \
 
 The supported configs are `kvasir.yaml`, `cvc_clinicdb.yaml`,
 `cvc_colondb.yaml` and `etis.yaml`. Each uses seed 42. ColonDB uses the selected
-Kvasir-transfer recipe with flip TTA; experimental configs and multi-seed runners were removed.
+Kvasir-transfer recipe with flip TTA. Earlier ColonDB experimental configs and
+multi-seed runners were removed. The separate [Kvasir A0–A3 suite](docs/ABLATIONS_KVASIR.md)
+uses four controlled variants, one shared split, seed 42, no TTA and no hard routing:
+
+```bash
+python scripts/run_kvasir_ablations.py --device cuda
+```
+
+It trains all four variants before running test, then saves separate validation
+and test tables as CSV, Markdown and LaTeX under `runs/rocu_kvasir_ablations_seed42/`.
 
 Create a CSV and Markdown comparison from completed runs:
 

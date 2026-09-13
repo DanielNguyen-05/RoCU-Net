@@ -133,7 +133,7 @@ class MultiScaleOccupancyLoss(nn.Module):
 
         routing_losses: list[torch.Tensor] = []
         for key in ("routing_gate_1", "routing_gate_2"):
-            if key not in outputs:
+            if self.routing_weight == 0.0 or key not in outputs:
                 continue
             gate = outputs[key]
             scaled_target = F.adaptive_max_pool2d(target_boundary, gate.shape[-2:])

@@ -1,0 +1,7 @@
+base_config: kvasir_a0_full.yaml
+experiment:
+  name: rocu_kvasir_a3_no_blending_seed42
+model:
+  routing_enabled: false
+loss:
+  routing_weight: 0.0

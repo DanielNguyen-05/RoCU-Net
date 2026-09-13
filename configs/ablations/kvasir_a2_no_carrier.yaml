@@ -1,0 +1,5 @@
+base_config: kvasir_a0_full.yaml
+experiment:
+  name: rocu_kvasir_a2_no_carrier_seed42
+model:
+  use_semantic_carrier: false

@@ -47,6 +47,8 @@ class InferenceModel(nn.Module):
                     active = (uncertainty >= block.uncertainty_threshold
                               if block.routing_enabled and block.hard_routing_inference
                               else torch.ones_like(uncertainty, dtype=torch.bool))
+                    if not getattr(block, "occupancy_constraint", True):
+                        active = torch.zeros_like(uncertainty, dtype=torch.bool)
                     outputs[f"routing_active_{stage}"] = active.float()
             for key, value in outputs.items():
                 if dims and value.ndim >= 4:

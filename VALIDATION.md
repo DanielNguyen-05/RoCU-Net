@@ -32,3 +32,11 @@ A temporary synthetic dataset also passed training, optimizer/epoch resume,
 evaluation, prediction, checkpoint-based profiling and visualization with five
 examples. New checkpoint keys, resolved configs and summaries used the canonical
 RoCU names. This verifies software compatibility, not new dataset scores.
+
+The Kvasir A0–A3 implementation adds checks for direct-sigmoid gradients,
+carrier-information removal, final gate=1, omitted gate supervision, identical
+initial weights, dense solver accounting, changed-dataset rejection and stale
+test-metric rejection. The complete four-variant train/test/table pipeline and
+dense/hard routing comparison passed on a synthetic offline dataset. Kvasir was
+audited locally: 1,000 unique decoded images, with shared splits of 800/100/100.
+These implementation checks do not constitute completed real-data ablations.

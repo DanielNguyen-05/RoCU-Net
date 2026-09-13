@@ -1,0 +1,5 @@
+base_config: kvasir_a0_full.yaml
+experiment:
+  name: rocu_kvasir_a1_no_constraint_seed42
+model:
+  occupancy_constraint: false

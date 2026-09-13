@@ -190,6 +190,7 @@ def main() -> None:
     scheduler = make_scheduler(optimizer, config)
     train_cfg = config["training"]
     amp_enabled = bool(train_cfg.get("amp", True) and device.type == "cuda")
+    eval_amp_enabled = bool(train_cfg.get("eval_amp", train_cfg.get("amp", True)) and device.type == "cuda")
     scaler = build_grad_scaler(amp_enabled)
 
     start_epoch = 1
@@ -215,7 +216,7 @@ def main() -> None:
     if init_path and resume_path is None:
         initial_metrics, _, _ = evaluate_model(
             evaluation_model, loaders["val"], loss_fn, device,
-            threshold=float(train_cfg.get("threshold", 0.5)), amp=amp_enabled,
+            threshold=float(train_cfg.get("threshold", 0.5)), amp=eval_amp_enabled,
             description="initial validation",
         )
         best_dice = float(initial_metrics["mean"]["dice"])
@@ -257,7 +258,7 @@ def main() -> None:
             loss_fn,
             device,
             threshold=threshold,
-            amp=amp_enabled,
+            amp=eval_amp_enabled,
             description=f"val {epoch:03d}",
         )
         current_lr = float(max(group["lr"] for group in optimizer.param_groups))
@@ -320,7 +321,7 @@ def main() -> None:
         loss_fn,
         device,
         threshold=threshold,
-        amp=amp_enabled,
+        amp=eval_amp_enabled,
         description="best validation",
     )
     save_json(val_metrics, run_dir / "val_metrics.json")
@@ -346,7 +347,7 @@ def main() -> None:
             loss_fn,
             device,
             threshold=threshold,
-            amp=amp_enabled,
+            amp=eval_amp_enabled,
             description="held-out test",
             prediction_dir=prediction_dir,
         )

@@ -430,6 +430,7 @@ class RoCUBlock(nn.Module):
         hard_routing_inference: bool = True,
         uncertainty_threshold: float = 0.20,
         use_semantic_carrier: bool = True,
+        occupancy_constraint: bool = True,
     ):
         super().__init__()
         self.carrier_channels = int(carrier_channels)
@@ -439,6 +440,9 @@ class RoCUBlock(nn.Module):
         self.hard_routing_inference = bool(hard_routing_inference)
         self.uncertainty_threshold = float(uncertainty_threshold)
         self.use_semantic_carrier = bool(use_semantic_carrier)
+        self.occupancy_constraint = bool(occupancy_constraint)
+        if not self.occupancy_constraint and self.hard_routing_inference:
+            raise ValueError("Without occupancy constraint, hard_routing_inference must be false")
 
         self.carrier_expansion = ConvBNSiLU(
             self.carrier_channels,
@@ -529,7 +533,10 @@ class RoCUBlock(nn.Module):
             and not self.training
             and not torch.is_grad_enabled()
         )
-        if use_sparse_solver:
+        if not self.occupancy_constraint:
+            grouped_children = torch.sigmoid(grouped_scores)
+            solver_active = torch.zeros_like(parent)
+        elif use_sparse_solver:
             grouped_children = _routed_occupancy_solve(
                 parent,
                 grouped_scores,
@@ -537,6 +544,7 @@ class RoCUBlock(nn.Module):
                 self.solver_iterations,
                 self.epsilon,
             )
+            solver_active = active.float()
         else:
             grouped_children = _OccupancyConstraint.apply(
                 parent,
@@ -544,13 +552,14 @@ class RoCUBlock(nn.Module):
                 self.solver_iterations,
                 self.epsilon,
             )
+            solver_active = torch.ones_like(parent)
         refined = F.pixel_shuffle(grouped_children, upscale_factor=2)
         children = (1.0 - gate_dense) * parent_up + gate_dense * refined
         diagnostics = {
             "boundary": boundary,
             "gate_parent": gate_parent,
             "uncertainty_parent": parent_uncertainty,
-            "active_fraction": active.float().mean(),
+            "active_fraction": solver_active.mean(),
         }
         return children, carrier_out, diagnostics
 
@@ -637,6 +646,7 @@ class RoCUNet(CheckpointCompatibleModule):
         hard_routing_inference: bool = True,
         uncertainty_threshold: float = 0.20,
         use_semantic_carrier: bool = True,
+        occupancy_constraint: bool = True,
     ):
         super().__init__()
         if len(decoder_channels) != 2:
@@ -677,6 +687,7 @@ class RoCUNet(CheckpointCompatibleModule):
             "hard_routing_inference": hard_routing_inference,
             "uncertainty_threshold": uncertainty_threshold,
             "use_semantic_carrier": use_semantic_carrier,
+            "occupancy_constraint": occupancy_constraint,
         }
         self.rocu1 = RoCUBlock(c1, **block_kwargs)
         self.rocu2 = RoCUBlock(shallow_guide_channels, **block_kwargs)
@@ -766,6 +777,7 @@ def build_model(config: dict) -> nn.Module:
             hard_routing_inference=bool(cfg.get("hard_routing_inference", True)),
             uncertainty_threshold=float(cfg.get("routing_uncertainty_threshold", 0.20)),
             use_semantic_carrier=bool(cfg.get("use_semantic_carrier", True)),
+            occupancy_constraint=bool(cfg.get("occupancy_constraint", True)),
         )
     if architecture != "occupancy_unet":
         raise ValueError(f"Unsupported model architecture: {architecture}")

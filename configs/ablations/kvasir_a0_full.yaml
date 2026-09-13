@@ -1,0 +1,29 @@
+base_config: ../kvasir.yaml
+
+experiment:
+  name: rocu_kvasir_a0_full_seed42
+  output_dir: runs/rocu_kvasir_ablations_seed42
+  seed: 42
+  deterministic: true
+
+data:
+  # The suite runner prepares one shared, pixel-grouped split for all variants.
+  split_source: runs/rocu_kvasir_ablations_seed42/splits
+  group_identical_images: true
+
+model:
+  occupancy_constraint: true
+  use_semantic_carrier: true
+  routing_enabled: true
+  hard_routing_inference: false
+
+training:
+  # ImageNet encoder initialization, never a full segmentation checkpoint.
+  init_checkpoint: null
+  # Train with AMP, measure all ablation metrics in FP32.
+  eval_amp: false
+  # The runner evaluates test only after all four training jobs finish.
+  test_after_training: false
+
+inference:
+  tta: none
