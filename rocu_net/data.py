@@ -60,7 +60,7 @@ def _indexed_files(directory: Path) -> dict[str, Path]:
 
 def discover_pairs(root: str | Path, image_dir: str = "images", mask_dir: str = "masks") -> list[SamplePair]:
     root = Path(root).expanduser().resolve()
-    candidates = [root, root / "Kvasir-SEG"]
+    candidates = [root, root / "Kvasir"]
     selected: tuple[Path, Path] | None = None
     for base in candidates:
         images = base / image_dir
@@ -137,8 +137,8 @@ def create_or_load_splits(
 ) -> dict[str, list[SamplePair]]:
     dataset_root = Path(dataset_root).expanduser().resolve()
     # If the data are nested, use the actual common parent to make manifests portable.
-    if not (dataset_root / image_dir).is_dir() and (dataset_root / "Kvasir-SEG" / image_dir).is_dir():
-        dataset_root = dataset_root / "Kvasir-SEG"
+    if not (dataset_root / image_dir).is_dir() and (dataset_root / "Kvasir" / image_dir).is_dir():
+        dataset_root = dataset_root / "Kvasir"
     split_dir = Path(split_dir)
     paths = {name: split_dir / f"{name}.csv" for name in ("train", "val", "test")}
     if source_split_dir is not None:
