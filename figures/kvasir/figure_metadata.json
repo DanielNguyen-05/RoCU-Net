@@ -1,5 +1,5 @@
 {
-  "checkpoint": "/Users/dangnguyen/Desktop/RoCU-Net/runs/crs_ocu_kvasir_seed42/best.pt",
+  "checkpoint": "/Users/dangnguyen/Desktop/RoCU-Net/runs/rocu_kvasir_seed42/best.pt",
   "checkpoint_sha256": "53598bb81bd07f668c5533371724b05033a5e6d2086db92e58eafeb0f97d4d61",
   "checkpoint_epoch": 197,
   "protocol": "test split",
@@ -21,6 +21,7 @@
   "amp": false,
   "device": "cpu",
   "n_images": 100,
+  "tta": "none",
   "mean": {
     "dice": 0.9029779893159866,
     "iou": 0.8360612273216248,

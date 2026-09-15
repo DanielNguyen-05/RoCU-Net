@@ -1,0 +1,8 @@
+base_config: kvasir_rocu.yaml
+
+experiment:
+  name: rocu_kvasir_u2_pixelshuffle_seed42
+
+model:
+  occupancy_constraint: false
+  carrier_upsampling: pixelshuffle

@@ -1,0 +1,603 @@
+%% ============================================================
+%% RoCU-Net ICAART2027 — references.bib (đã dọn dẹp)
+%% Đã xử lý: (1) gộp các key trùng lặp, (2) sửa các entry đang
+%% để dạng "arXiv preprint" nhưng thực ra đã được accept, dùng
+%% đúng tên conference/journal, (3) sửa xung đột key liu2024kan.
+%% Xem phần "CẦN XÁC NHẬN" ở cuối để quyết định giữ/xoá.
+%% ============================================================
+
+
+%% ---------- NHÓM A: Phương pháp cốt lõi / upsampling ----------
+
+@inproceedings{ronneberger2015unet,
+  author    = {Ronneberger, Olaf and Fischer, Philipp and Brox, Thomas},
+  title     = {{U-Net}: Convolutional Networks for Biomedical Image Segmentation},
+  booktitle = {Medical Image Computing and Computer-Assisted Intervention -- MICCAI 2015},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {9351},
+  pages     = {234--241},
+  publisher = {Springer},
+  year      = {2015},
+  doi       = {10.1007/978-3-319-24574-4_28},
+  url       = {https://link.springer.com/chapter/10.1007/978-3-319-24574-4_28}
+}
+
+@inproceedings{kirillov2020pointrend,
+  author    = {Kirillov, Alexander and Wu, Yuxin and He, Kaiming and Girshick, Ross},
+  title     = {{PointRend}: Image Segmentation as Rendering},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  year      = {2020},
+  url       = {https://arxiv.org/abs/1912.08193}
+}
+
+@inproceedings{wang2019carafe,
+  author    = {Wang, Jiaqi and Chen, Kai and Xu, Rui and Liu, Ziwei and Loy, Chen Change and Lin, Dahua},
+  title     = {{CARAFE}: Content-Aware ReAssembly of FEatures},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision},
+  pages     = {3007--3016},
+  year      = {2019},
+  url       = {https://arxiv.org/abs/1905.02188}
+}
+
+@inproceedings{liu2023dysample,
+  author    = {Liu, Wenze and Lu, Hao and Fu, Hongtao and Cao, Zhiguo},
+  title     = {Learning to Upsample by Learning to Sample},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision},
+  year      = {2023},
+  url       = {https://arxiv.org/abs/2308.15085}
+}
+
+@inproceedings{lu2022fade,
+  author = {Lu, Hao and Liu, Wenze and Fu, Hongtao and Cao, Zhiguo},
+  title = {{FADE}: Fusing the Assets of Decoder and Encoder for Task-Agnostic Upsampling},
+  booktitle = {Computer Vision -- ECCV 2022},
+  year = {2022},
+  url = {https://arxiv.org/abs/2207.10392}
+}
+
+@inproceedings{lu2022sapa,
+  author = {Lu, Hao and Liu, Wenze and Ye, Zixuan and Fu, Hongtao and Liu, Yuliang and Cao, Zhiguo},
+  title = {{SAPA}: Similarity-Aware Point Affiliation for Feature Upsampling},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume = {35},
+  year = {2022},
+  url = {https://arxiv.org/abs/2209.12866}
+}
+
+@article{harder2022hardconstrained,
+  author = {Harder, Paula and Hernandez-Garcia, Alex and Ramesh, Venkatesh and Yang, Qidong and Sattigeri, Prasanna and Szwarcman, Daniela and Watson, Campbell and Rolnick, David},
+  title = {Hard-Constrained Deep Learning for Climate Downscaling},
+  journal = {Journal of Machine Learning Research},
+  volume = {24},
+  number = {365},
+  pages = {1--40},
+  year = {2023},
+  url = {https://jmlr.org/papers/v24/23-0158.html}
+}
+
+@misc{buono2026attribution,
+  author = {Buono, Vincenzo and Sheikholharam Mashhadi, Peyman and Rahat, Mahmoud and Tiwari, Prayag and Byttner, Stefan},
+  title = {Attribution Upsampling Should Redistribute, Not Interpolate},
+  year = {2026},
+  eprint = {2603.16067},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.CV},
+  note = {Preprint at time of writing -- CHECK AGAIN closer to submission in case it gets accepted somewhere before ICAART 2027 camera-ready.},
+  url = {https://arxiv.org/abs/2603.16067}
+}
+
+
+%% ---------- NHÓM A: Baseline polyp / medical segmentation ----------
+
+@inproceedings{fan2020pranet,
+  author    = {Fan, Deng-Ping and Ji, Ge-Peng and Zhou, Tao and Chen, Geng and Fu, Huazhu and Shen, Jianbing and Shao, Ling},
+  title     = {{PraNet}: Parallel Reverse Attention Network for Polyp Segmentation},
+  booktitle = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2020},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {12266},
+  pages     = {263--273},
+  publisher = {Springer},
+  year      = {2020},
+  doi       = {10.1007/978-3-030-59725-2_26},
+  url       = {https://link.springer.com/chapter/10.1007/978-3-030-59725-2_26}
+}
+
+@inproceedings{rahman2024emcad,
+  author    = {Rahman, Md Mostafijur and Munir, Mustafa and Marculescu, Radu},
+  title     = {{EMCAD}: Efficient Multi-scale Convolutional Attention Decoding for Medical Image Segmentation},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  pages     = {11769--11779},
+  year      = {2024},
+  url       = {https://openaccess.thecvf.com/content/CVPR2024/html/Rahman_EMCAD_Efficient_Multi-scale_Convolutional_Attention_Decoding_for_Medical_Image_Segmentation_CVPR_2024_paper.html}
+}
+
+@inproceedings{jiang2024lvunet,
+  author    = {Jiang, Juntao and Wang, Mengmeng and Tian, Huizhong and Cheng, Lingbo and Liu, Yong},
+  title     = {{LV-UNet}: A Lightweight and Vanilla Model for Medical Image Segmentation},
+  booktitle = {2024 IEEE International Conference on Bioinformatics and Biomedicine (BIBM)},
+  pages     = {4240--4246},
+  publisher = {IEEE},
+  year      = {2024},
+  note      = {ML4BMI Workshop},
+  url       = {https://arxiv.org/abs/2408.16886}
+}
+
+@article{wang2024deepnext,
+  author  = {Wang, Chuantao and Wang, Saishuo and Shao, Shuo and Zhai, Jiliang},
+  title   = {{DeepNeXt}: A Lightweight Polyp Segmentation Algorithm Based on Multi-scale Attention},
+  journal = {Quantitative Imaging in Medicine and Surgery},
+  volume  = {14},
+  number  = {12},
+  pages   = {8551--8567},
+  year    = {2024},
+  doi     = {10.21037/qims-24-985},
+  url     = {https://qims.amegroups.org/article/view/130935/html}
+}
+
+@inproceedings{kim2021uacanet,
+  author = {Kim, Taehun and Lee, Hyemin and Kim, Daijin},
+  title = {{UACANet}: Uncertainty Augmented Context Attention for Polyp Segmentation},
+  booktitle = {Proceedings of the 29th ACM International Conference on Multimedia},
+  year = {2021},
+  url = {https://arxiv.org/abs/2107.02368}
+}
+
+@inproceedings{zhang2021transfuse,
+  author = {Zhang, Yundong and Liu, Huiye and Hu, Qiang},
+  title = {{TransFuse}: Fusing Transformers and {CNNs} for Medical Image Segmentation},
+  booktitle = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2021},
+  year = {2021},
+  url = {https://arxiv.org/abs/2102.08005}
+}
+
+@article{dong2023polyppvt,
+  author = {Dong, Bo and Wang, Wenhai and Fan, Deng-Ping and Li, Jinpeng and Fu, Huazhu and Shao, Ling},
+  title = {{Polyp-PVT}: Polyp Segmentation with Pyramid Vision Transformers},
+  journal = {CAAI Artificial Intelligence Research},
+  volume = {2},
+  pages = {9150015},
+  year = {2023},
+  doi = {10.26599/AIR.2023.9150015},
+  url = {https://arxiv.org/abs/2108.06932}
+}
+
+@inproceedings{zhou2018unetpp,
+  author = {Zhou, Zongwei and Siddiquee, Md Mahfuzur Rahman and Tajbakhsh, Nima and Liang, Jianming},
+  title = {{UNet++}: A Nested {U-Net} Architecture for Medical Image Segmentation},
+  booktitle = {Deep Learning in Medical Image Analysis and Multimodal Learning for Clinical Decision Support},
+  year = {2018},
+  note = {DLMIA/ML-CDS workshops},
+  url = {https://arxiv.org/abs/1807.10165}
+}
+
+@inproceedings{oktay2018attention,
+  author = {Oktay, Ozan and Schlemper, Jo and Le Folgoc, Loic and Lee, Matthew and Heinrich, Mattias and Misawa, Kazunari and Mori, Kensaku and McDonagh, Steven and Hammerla, Nils Y. and Kainz, Bernhard and Glocker, Ben and Rueckert, Daniel},
+  title = {Attention {U-Net}: Learning Where to Look for the Pancreas},
+  booktitle = {Medical Imaging with Deep Learning},
+  year = {2018},
+  url = {https://arxiv.org/abs/1804.03999}
+}
+
+@inproceedings{valanarasu2022unext,
+  author = {Valanarasu, Jeya Maria Jose and Patel, Vishal M.},
+  title = {{UNeXt}: {MLP}-based Rapid Medical Image Segmentation Network},
+  booktitle = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2022},
+  year = {2022},
+  url = {https://arxiv.org/abs/2203.04967}
+}
+
+@inproceedings{ruan2022malunet,
+  author = {Ruan, Jiacheng and Xiang, Suncheng and Xie, Mingye and Liu, Ting and Fu, Yuzhuo},
+  title = {{MALUNet}: A Multi-Attention and Light-weight {UNet} for Skin Lesion Segmentation},
+  booktitle = {2022 IEEE International Conference on Bioinformatics and Biomedicine (BIBM)},
+  year = {2022},
+  url = {https://arxiv.org/abs/2211.01784}
+}
+
+@inproceedings{ruan2023ege,
+  author = {Ruan, Jiacheng and Xie, Mingye and Gao, Jingsheng and Liu, Ting and Fu, Yuzhuo},
+  title = {{EGE-UNet}: An Efficient Group Enhanced {UNet} for Skin Lesion Segmentation},
+  booktitle = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2023},
+  year = {2023},
+  doi = {10.1007/978-3-031-43901-8_46},
+  url = {https://arxiv.org/abs/2307.08473}
+}
+
+%% Đã tách 2 bài KHÁC NHAU từng bị gán chung 1 key "liu2024kan"
+%% trong file gốc (1 bài là kiến trúc KAN gốc, 1 bài là U-KAN áp
+%% dụng cho segmentation). Nếu \cite{liu2024kan} trong .tex đang
+%% muốn nói tới U-KAN (nhiều khả năng, vì nó nằm trong Table so
+%% sánh), hãy đổi các chỗ đó thành \cite{li2025ukan}.
+@inproceedings{liu2024kan,
+  author = {Liu, Ziming and Wang, Yixuan and Vaidya, Sachin and Ruehle, Fabian and Halverson, James and Solja{\v{c}}i{\'c}, Marin and Hou, Thomas Y and Tegmark, Max},
+  title = {{KAN}: Kolmogorov--Arnold Networks},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  note = {Oral presentation},
+  year = {2025},
+  url = {https://arxiv.org/abs/2404.19756}
+}
+
+@inproceedings{li2025ukan,
+  author = {Li, Chenxin and Liu, Xinyu and Li, Wuyang and Wang, Cheng and Liu, Hengyu and Liu, Yifan and Chen, Zhen and Yuan, Yixuan},
+  title = {{U-KAN} Makes Strong Backbone for Medical Image Segmentation and Generation},
+  booktitle = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  year = {2025},
+  url = {https://arxiv.org/abs/2406.02918}
+}
+
+
+%% ---------- NHÓM A: Backbone / dataset / motivation lâm sàng ----------
+
+@inproceedings{howard2019searching,
+  title={Searching for mobilenetv3},
+  author={Howard, Andrew and Sandler, Mark and Chu, Grace and Chen, Liang-Chieh and Chen, Bo and Tan, Mingxing and Wang, Weijun and Zhu, Yukun and Pang, Ruoming and Vasudevan, Vijay and others},
+  booktitle={Proceedings of the IEEE/CVF international conference on computer vision},
+  pages={1314--1324},
+  year={2019}
+}
+
+@inproceedings{sandler2018mobilenetv2,
+  title={Mobilenetv2: Inverted residuals and linear bottlenecks},
+  author={Sandler, Mark and Howard, Andrew and Zhu, Menglong and Zhmoginov, Andrey and Chen, Liang-Chieh},
+  booktitle={Proceedings of the IEEE conference on computer vision and pattern recognition},
+  pages={4510--4520},
+  year={2018}
+}
+
+@inproceedings{jha2020kvasirseg,
+  author    = {Jha, Debesh and Smedsrud, Pia H. and Riegler, Michael A. and Halvorsen, P{\aa}l and de Lange, Thomas and Johansen, Dag and Johansen, H{\aa}vard D.},
+  title     = {{Kvasir-SEG}: A Segmented Polyp Dataset},
+  booktitle = {MultiMedia Modeling},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {11962},
+  pages     = {451--462},
+  publisher = {Springer},
+  year      = {2020},
+  doi       = {10.1007/978-3-030-37734-2_37},
+  url       = {https://link.springer.com/chapter/10.1007/978-3-030-37734-2_37}
+}
+
+@article{bernal2015wm,
+  title={WM-DOVA maps for accurate polyp highlighting in colonoscopy: Validation vs. saliency maps from physicians},
+  author={Bernal, Jorge and S{\'a}nchez, F. Javier and Fern{\'a}ndez-Esparrach, Gloria and Gil, Debora and Rodr{\'i}guez, Cristina and Vilari{\~n}o, Fernando},
+  journal={Computerized medical imaging and graphics},
+  volume={43},
+  pages={99--111},
+  year={2015},
+  publisher={Elsevier}
+}
+
+@article{bernal2012towards,
+  title={Towards automatic polyp detection with a polyp appearance model},
+  author={Bernal, Jorge and S{\'a}nchez, Javier and Vilarino, Fernando},
+  journal={Pattern Recognition},
+  volume={45},
+  number={9},
+  pages={3166--3182},
+  year={2012},
+  publisher={Elsevier}
+}
+
+@article{sung2021global,
+  author  = {Sung, Hyuna and Ferlay, Jacques and Siegel, Rebecca L. and Laversanne, Mathieu and Soerjomataram, Isabelle and Jemal, Ahmedin and Bray, Freddie},
+  title   = {Global Cancer Statistics 2020: {GLOBOCAN} Estimates of Incidence and Mortality Worldwide for 36 Cancers in 185 Countries},
+  journal = {CA: A Cancer Journal for Clinicians},
+  year    = {2021},
+  volume  = {71},
+  number  = {3},
+  pages   = {209--249},
+  doi     = {10.3322/caac.21660}
+}
+
+@article{repici2020efficacy,
+  author  = {Repici, Alessandro and Badalamenti, Matteo and Maselli, Roberta and Correale, Loredana and Radaelli, Franco and Rondonotti, Emanuele and Ferrara, Elisa and Spadaccini, Marco and Alkandari, Asma and Fugazza, Alessandro and Anderloni, Andrea and Galtieri, Piera Alessia and Pellegatta, Gaia and Carrara, Silvia and Di Leo, Milena and Craviotto, Vincenzo and Lamonaca, Laura and Lorenzetti, Roberto and Andrealli, Alida and Antonelli, Giulio and Wallace, Michael and Sharma, Prateek and Rosch, Thomas and Hassan, Cesare},
+  title   = {Efficacy of Real-Time Computer-Aided Detection of Colorectal Neoplasia in a Randomized Trial},
+  journal = {Gastroenterology},
+  year    = {2020},
+  volume  = {159},
+  number  = {2},
+  pages   = {512--520.e7},
+  doi     = {10.1053/j.gastro.2020.04.062}
+}
+
+@misc{openai2026chatgpt,
+  author       = {{OpenAI}},
+  title        = {{ChatGPT}},
+  year         = {2026},
+  howpublished = {AI system used for research and manuscript-drafting assistance},
+  url          = {https://chatgpt.com/},
+  note         = {Used during September 2026; see the manuscript's AI-assisted writing disclosure}
+}
+
+
+%% ============================================================
+%% NHÓM B/C — CẦN BẠN XÁC NHẬN TRƯỚC KHI GIỮ HAY XOÁ
+%% Đây là các entry mình không chắc chắn có thực sự được \cite{}
+%% trong bản .tex hiện tại hay không (nhiều khả năng là rác được
+%% copy nguyên bib của paper LV-UNet). Mình ĐÃ sửa venue cho các
+%% bài đã xác minh được accepted, nhưng CHƯA xoá bài nào ở đây —
+%% gửi lại danh sách \cite{} key thực tế đang dùng (hoặc paste
+%% toàn bộ .tex) để mình xoá đúng phần thật sự không dùng.
+%% ============================================================
+
+%% -- Có khả năng đang dùng (huấn luyện / kiến trúc lân cận) --
+
+@inproceedings{kingma2014adam,
+  title={Adam: A method for stochastic optimization},
+  author={Kingma, Diederik P and Ba, Jimmy},
+  booktitle={International Conference on Learning Representations (ICLR)},
+  year={2015}
+}
+
+@inproceedings{loshchilov2016sgdr,
+  title={{SGDR}: Stochastic gradient descent with warm restarts},
+  author={Loshchilov, Ilya and Hutter, Frank},
+  booktitle={International Conference on Learning Representations (ICLR)},
+  year={2017}
+}
+
+@inproceedings{ioffe2015batch,
+  title={Batch normalization: Accelerating deep network training by reducing internal covariate shift},
+  author={Ioffe, Sergey and Szegedy, Christian},
+  booktitle={International conference on machine learning},
+  pages={448--456},
+  year={2015},
+  organization={pmlr}
+}
+
+@article{chen2021transunet,
+  title={{TransUNet}: Rethinking the {U-Net} architecture design for medical image segmentation through the lens of transformers},
+  author={Chen, Jieneng and Mei, Jieru and Li, Xianhang and Lu, Yongyi and Yu, Qihang and Wei, Qingyue and Luo, Xiangde and Xie, Yutong and Adeli, Ehsan and Wang, Yan and Lungren, Matthew and Zhang, Shaoting and Xing, Lei and Lu, Le and Yuille, Alan and Zhou, Yuyin},
+  journal={Medical Image Analysis},
+  volume={97},
+  pages={103280},
+  year={2024},
+  doi={10.1016/j.media.2024.103280}
+}
+
+@inproceedings{liu2021swin,
+  title={Swin transformer: Hierarchical vision transformer using shifted windows},
+  author={Liu, Ze and Lin, Yutong and Cao, Yue and Hu, Han and Wei, Yixuan and Zhang, Zheng and Lin, Stephen and Guo, Baining},
+  booktitle={Proceedings of the IEEE/CVF international conference on computer vision},
+  pages={10012--10022},
+  year={2021}
+}
+
+@inproceedings{cao2023swin,
+  title={Swin-unet: Unet-like pure transformer for medical image segmentation},
+  author={Cao, Hu and Wang, Yueyue and Chen, Joy and Jiang, Dongsheng and Zhang, Xiaopeng and Tian, Qi and Wang, Manning},
+  booktitle={Computer Vision--ECCV 2022 Workshops},
+  pages={205--218},
+  year={2023},
+  organization={Springer}
+}
+
+@article{isensee2018nnu,
+  title={{nnU-Net}: a self-configuring method for deep learning-based biomedical image segmentation},
+  author={Isensee, Fabian and Jaeger, Paul F and Kohl, Simon A A and Petersen, Jens and Maier-Hein, Klaus H},
+  journal={Nature Methods},
+  volume={18},
+  pages={203--211},
+  year={2021},
+  doi={10.1038/s41592-020-01008-z}
+}
+
+@article{howard2017mobilenets,
+  title={Mobilenets: Efficient convolutional neural networks for mobile vision applications},
+  author={Howard, Andrew G and Zhu, Menglong and Chen, Bo and Kalenichenko, Dmitry and Wang, Weijun and Weyand, Tobias and Andreetto, Marco and Adam, Hartwig},
+  journal={arXiv preprint arXiv:1704.04861},
+  year={2017},
+  note={Technical report; never appeared in a peer-reviewed proceedings/journal, so arXiv is the correct citation form here.}
+}
+
+%% -- Rất có khả năng KHÔNG dùng trong RoCU-Net (chủ đề lệch: 3D/volumetric,
+%%    da liễu, mạch máu võng mạc, siêu âm vú, road extraction, v.v. —
+%%    có vẻ là rác copy nguyên bib của LV-UNet). Đề xuất XOÁ nếu đúng. --
+
+@inproceedings{cciccek20163d,
+  title={3D U-Net: learning dense volumetric segmentation from sparse annotation},
+  author={{\c{C}}i{\c{c}}ek, {\"O}zg{\"u}n and Abdulkadir, Ahmed and Lienkamp, Soeren S and Brox, Thomas and Ronneberger, Olaf},
+  booktitle={Medical Image Computing and Computer-Assisted Intervention--MICCAI 2016},
+  pages={424--432},
+  year={2016},
+  organization={Springer}
+}
+
+@inproceedings{milletari2016v,
+  title={V-net: Fully convolutional neural networks for volumetric medical image segmentation},
+  author={Milletari, Fausto and Navab, Nassir and Ahmadi, Seyed-Ahmad},
+  booktitle={2016 fourth international conference on 3D vision (3DV)},
+  pages={565--571},
+  year={2016},
+  organization={Ieee}
+}
+
+@inproceedings{hatamizadeh2022unetr,
+  title={Unetr: Transformers for 3d medical image segmentation},
+  author={Hatamizadeh, Ali and Tang, Yucheng and Nath, Vishwesh and Yang, Dong and Myronenko, Andriy and Landman, Bennett and Roth, Holger R and Xu, Daguang},
+  booktitle={Proceedings of the IEEE/CVF winter conference on applications of computer vision},
+  pages={574--584},
+  year={2022}
+}
+
+@article{falk2019u,
+  title={U-Net: deep learning for cell counting, detection, and morphometry},
+  author={Falk, Thorsten and Mai, Dominic and Bensch, Robert and others},
+  journal={Nature methods},
+  volume={16},
+  number={1},
+  pages={67--70},
+  year={2019},
+  publisher={Nature Publishing Group US New York}
+}
+
+@article{zhang2018road,
+  title={Road extraction by deep residual u-net},
+  author={Zhang, Zhengxin and Liu, Qingjie and Wang, Yunhong},
+  journal={IEEE Geoscience and Remote Sensing Letters},
+  volume={15},
+  number={5},
+  pages={749--753},
+  year={2018},
+  publisher={IEEE}
+}
+
+@article{alom2019recurrent,
+  title={Recurrent residual U-Net for medical image segmentation},
+  author={Alom, Md Zahangir and Yakopcic, Chris and Hasan, Mahmudul and Taha, Tarek M and Asari, Vijayan K},
+  journal={Journal of Medical Imaging},
+  volume={6},
+  number={1},
+  pages={014006},
+  year={2019},
+  publisher={Society of Photo-Optical Instrumentation Engineers}
+}
+
+@article{saeed2021rmu,
+  title={RMU-net: a novel residual mobile U-net model for brain tumor segmentation from MR images},
+  author={Saeed, Muhammad Usman and Ali, Ghulam and Bin, Wang and Rida, Islam and Tahir, Muhammad and others},
+  journal={Electronics},
+  volume={10},
+  number={16},
+  pages={1962},
+  year={2021},
+  publisher={MDPI}
+}
+
+@inproceedings{alsenan2021deep,
+  title={A Deep Learning Model based on MobileNetV3 and UNet for Spinal Cord Gray Matter Segmentation},
+  author={Alsenan, Alhanouf and others},
+  booktitle={2021 44th International Conference on Telecommunications and Signal Processing (TSP)},
+  pages={244--248},
+  year={2021},
+  organization={IEEE}
+}
+
+@inproceedings{chen2023vanillanet,
+  title={{VanillaNet}: the Power of Minimalism in Deep Learning},
+  author={Chen, Hanting and Wang, Yunhe and Guo, Jianyuan and Tao, Dacheng},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={36},
+  year={2023}
+}
+
+@inproceedings{huang2020unet,
+  title={Unet 3+: A full-scale connected unet for medical image segmentation},
+  author={Huang, Huimin and Lin, Lanfen and Tong, Ruofeng and Hu, Hongjie and Zhang, Qiaowei and Iwamoto, Yutaro and Han, Xianhua and Chen, Yen-Wei and Wu, Jian},
+  booktitle={ICASSP 2020-2020 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
+  pages={1055--1059},
+  year={2020},
+  organization={IEEE}
+}
+
+@article{li2018h,
+  title={H-DenseUNet: hybrid densely connected UNet for liver and tumor segmentation from CT volumes},
+  author={Li, Xiaomeng and Chen, Hao and Qi, Xiaojuan and Dou, Qi and Fu, Chi-Wing and Heng, Pheng-Ann},
+  journal={IEEE transactions on medical imaging},
+  volume={37},
+  number={12},
+  pages={2663--2674},
+  year={2018},
+  publisher={IEEE}
+}
+
+@inproceedings{long2015fully,
+  title={Fully convolutional networks for semantic segmentation},
+  author={Long, Jonathan and Shelhamer, Evan and Darrell, Trevor},
+  booktitle={Proceedings of the IEEE conference on computer vision and pattern recognition},
+  pages={3431--3440},
+  year={2015}
+}
+
+@inproceedings{han2022vision,
+  title={Vision {GNN}: An image is worth graph of nodes},
+  author={Han, Kai and Wang, Yunhe and Guo, Jianyuan and Tang, Yehui and Wu, Enhua},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={35},
+  year={2022}
+}
+
+@inproceedings{gutman2016skin,
+  title={Skin lesion analysis toward melanoma detection: A challenge at the international symposium on biomedical imaging (ISBI) 2016, hosted by the international skin imaging collaboration (ISIC)},
+  author={Gutman, David and Codella, Noel C F and Celebi, Emre and Helba, Brian and Marchetti, Michael and Mishra, Nabin and Halpern, Allan},
+  booktitle={2016 IEEE 13th International Symposium on Biomedical Imaging (ISBI)},
+  year={2016},
+  note={No standalone peer-reviewed proceedings paper found beyond the ISBI challenge report; arXiv:1605.01397 remains the citable version.}
+}
+
+@inproceedings{codella2018skin,
+  title={Skin lesion analysis toward melanoma detection: A challenge at the 2017 international symposium on biomedical imaging (isbi), hosted by the international skin imaging collaboration (isic)},
+  author={Codella, Noel CF and Gutman, David and Celebi, M Emre and Helba, Brian and Marchetti, Michael A and Dusza, Stephen W and Kalloo, Aadi and Liopyris, Konstantinos and Mishra, Nabin and Kittler, Harald and others},
+  booktitle={2018 IEEE 15th international symposium on biomedical imaging (ISBI 2018)},
+  pages={168--172},
+  year={2018},
+  organization={IEEE}
+}
+
+@article{fraz2012ensemble,
+  title={An ensemble classification-based approach applied to retinal blood vessel segmentation},
+  author={Fraz, Muhammad Moazam and Remagnino, Paolo and Hoppe, Andreas and Uyyanonvara, Bunyarit and Rudnicka, Alicja R and Owen, Christopher G and Barman, Sarah A},
+  journal={IEEE Transactions on Biomedical Engineering},
+  volume={59},
+  number={9},
+  pages={2538--2548},
+  year={2012},
+  publisher={IEEE}
+}
+
+@article{al2020dataset,
+  title={Dataset of breast ultrasound images},
+  author={Al-Dhabyani, Walid and Gomaa, Mohammed and Khaled, Hussien and Fahmy, Aly},
+  journal={Data in brief},
+  volume={28},
+  pages={104863},
+  year={2020},
+  publisher={Elsevier}
+}
+
+@misc{jiang2023vigunet,
+  title={ViG-UNet: Vision Graph Neural Networks for Medical Image Segmentation},
+  author={Jiang, Juntao and Chen, Xiyue and Tian, Huizhong and Cheng, Lingbo and Liu, Yong},
+  booktitle={2023 IEEE 20th International Symposium on Biomedical Imaging (ISBI)},
+  year={2023},
+  doi={10.1109/ISBI53787.2023.10230496}
+}
+
+@article{abrokwa2022task,
+  title={Task shifting for point of care ultrasound in primary healthcare in low-and middle-income countries-a systematic review},
+  author={Abrokwa, Seth Kofi and Ruby, Lisa C and Heuvelings, Charlotte C and Belard, Sabine},
+  journal={EClinicalMedicine},
+  volume={45},
+  year={2022},
+  publisher={Elsevier}
+}
+
+@article{dulmage2021point,
+  title={A point-of-care, real-time artificial intelligence system to support clinician diagnosis of a wide range of skin diseases},
+  author={Dulmage, Brittany and Tegtmeyer, Kyle and Zhang, Michael Z and Colavincenzo, Maria and Xu, Shuai},
+  journal={Journal of Investigative Dermatology},
+  volume={141},
+  number={5},
+  pages={1230--1235},
+  year={2021},
+  publisher={Elsevier}
+}
+
+@inproceedings{gamal2018shuffleseg,
+  title={Shuffleseg: Real-time semantic segmentation network},
+  author={Gamal, Mostafa and Siam, Mennatullah and Abdel-Razek, Moemen},
+  booktitle={arXiv preprint},
+  year={2018},
+  note={No peer-reviewed venue found beyond the arXiv report (arXiv:1803.03816); keep as arXiv if cited.}
+}
+
+@article{lecun2015deep,
+  title={Deep learning},
+  author={LeCun, Yann and Bengio, Yoshua and Hinton, Geoffrey},
+  journal={nature},
+  volume={521},
+  number={7553},
+  pages={436--444},
+  year={2015},
+  publisher={Nature Publishing Group UK London}
+}

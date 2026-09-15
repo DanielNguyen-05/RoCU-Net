@@ -1,4 +1,4 @@
-"""Run the four predefined Kvasir ablations, then export separate val/test tables."""
+"""Run matched Kvasir component or upsampling ablations and export val/test tables."""
 from __future__ import annotations
 
 import argparse
@@ -25,6 +25,22 @@ VARIANTS = (
     ("A3", "Without adaptive blending", "kvasir_a3_no_blending.yaml"),
 )
 
+UPSAMPLING_VARIANTS = (
+    ("U0", "RoCU (dense)", "kvasir_rocu.yaml"),
+    ("U1", "Bilinear", "kvasir_bilinear.yaml"),
+    ("U2", "PixelShuffle", "kvasir_pixelshuffle.yaml"),
+    ("U3", "CARAFE", "kvasir_carafe.yaml"),
+    ("U4", "DySample-LP", "kvasir_dysample.yaml"),
+)
+
+
+def variant_list(suite: str):
+    if suite == "components":
+        return VARIANTS
+    if suite == "upsampling":
+        return UPSAMPLING_VARIANTS
+    raise ValueError(f"Unknown ablation suite: {suite}")
+
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -42,13 +58,19 @@ def portable_path(path: Path) -> str:
         return str(path)
 
 
-def validate_variants(configs: list[dict]) -> None:
+def validate_variants(configs: list[dict], suite: str = "components") -> None:
     """Reject accidental changes to a second factor or the shared protocol."""
+    variants = variant_list(suite)
+    if len(configs) != len(variants):
+        raise ValueError("Incorrect number of ablation configs")
     base = clean_config(configs[0])
     for index, config in enumerate(configs):
         expected = deepcopy(base)
         expected["experiment"]["name"] = config["experiment"]["name"]
-        if index == 1:
+        if suite == "upsampling":
+            expected["model"]["occupancy_constraint"] = index == 0
+            expected["model"]["carrier_upsampling"] = ("pixelshuffle", "bilinear", "pixelshuffle", "carafe", "dysample")[index]
+        elif index == 1:
             expected["model"]["occupancy_constraint"] = False
         elif index == 2:
             expected["model"]["use_semantic_carrier"] = False
@@ -56,25 +78,28 @@ def validate_variants(configs: list[dict]) -> None:
             expected["model"]["routing_enabled"] = False
             expected["loss"]["routing_weight"] = 0.0
         if clean_config(config) != expected:
-            raise ValueError(f"{VARIANTS[index][0]} differs from A0 beyond its intended ablation")
+            raise ValueError(f"{variants[index][0]} differs from the reference beyond its intended ablation")
     model, training = base["model"], base["training"]
     if not all(model[k] for k in ("occupancy_constraint", "use_semantic_carrier", "routing_enabled")):
         raise ValueError("A0 must enable all three components")
+    if model.get("carrier_upsampling", "pixelshuffle") != "pixelshuffle":
+        raise ValueError("The RoCU reference must use its original carrier expansion")
     if model["hard_routing_inference"] or base["inference"]["tta"] != "none":
         raise ValueError("Ablations require dense inference and no TTA")
     if training.get("init_checkpoint") or training["test_after_training"] or training["eval_amp"]:
         raise ValueError("Ablations require fresh training, deferred test and FP32 evaluation")
     if base["experiment"]["seed"] != 42 or not base["data"]["group_identical_images"]:
         raise ValueError("This suite uses seed 42 and pixel-grouped splits")
-    if len({c["experiment"]["name"] for c in configs}) != 4:
+    if len({c["experiment"]["name"] for c in configs}) != len(variants):
         raise ValueError("Each ablation needs a separate run directory")
 
 
 def suite_configs(output: Path, data_root: Path | None = None, epochs: int | None = None,
-                  smoke: bool = False) -> list[dict]:
+                  smoke: bool = False, suite: str = "components") -> list[dict]:
     configs = []
-    for _, _, filename in VARIANTS:
-        cfg = load_config(PROJECT_ROOT / "configs/ablations" / filename)
+    directory = "upsampling" if suite == "upsampling" else "ablations"
+    for _, _, filename in variant_list(suite):
+        cfg = load_config(PROJECT_ROOT / "configs" / directory / filename)
         cfg["experiment"]["output_dir"] = portable_path(output)
         cfg["data"]["root"] = portable_path(data_root or resolve_project_path(cfg["data"]["root"]))
         cfg["data"]["split_source"] = portable_path(output / "splits")
@@ -91,7 +116,7 @@ def suite_configs(output: Path, data_root: Path | None = None, epochs: int | Non
             cfg["training"].update(epochs=1, warmup_epochs=0, amp=False, batch_size=3, eval_batch_size=3)
             cfg["profiling"].update(warmup_iterations=0, benchmark_iterations=1)
         configs.append(cfg)
-    validate_variants(configs)
+    validate_variants(configs, suite)
     return configs
 
 
@@ -149,9 +174,10 @@ def verify_run(run: Path, cfg: dict, protocol: dict) -> dict:
     return summary
 
 
-def collect(output: Path, configs: list[dict], protocol: dict, split: str) -> pd.DataFrame:
+def collect(output: Path, configs: list[dict], protocol: dict, split: str,
+            suite: str = "components") -> pd.DataFrame:
     rows = []
-    for (variant, label, _), cfg in zip(VARIANTS, configs):
+    for (variant, label, _), cfg in zip(variant_list(suite), configs):
         run = output / cfg["experiment"]["name"]
         summary = verify_run(run, cfg, protocol)
         metrics = json.loads((run / f"{split}_metrics.json").read_text())
@@ -175,8 +201,12 @@ def collect(output: Path, configs: list[dict], protocol: dict, split: str) -> pd
                      "Occupancy MAE": (full + half) / 2,
                      "Occupancy MAE full-half": full, "Occupancy MAE half-quarter": half,
                      "Checkpoint SHA256": sha256(run / "best.pt")})
+        if suite == "upsampling":
+            rows[-1]["Parameters M"] = summary["lightweight"]["parameters"]["millions"]
+            rows[-1]["Conv Linear GMACs"] = summary["lightweight"]["computation"]["gmacs_per_image"]
     frame = pd.DataFrame(rows)
-    frame.to_csv(output / f"ablation_{split}.csv", index=False)
+    prefix = "upsampling" if suite == "upsampling" else "ablation"
+    frame.to_csv(output / f"{prefix}_{split}.csv", index=False)
     heading = "SOFTWARE SMOKE TEST — NOT PAPER RESULTS" if protocol["smoke_test"] else f"Kvasir ablation — {split.upper()}"
     lines = [f"# {heading}", "", "Seed 42; no TTA; no hard routing; FP32 evaluation.", "",
              "| Variant | Dice ↑ | IoU ↑ | Boundary F1 ↑ | Occupancy MAE ↓ |",
@@ -184,15 +214,22 @@ def collect(output: Path, configs: list[dict], protocol: dict, split: str) -> pd
     for row in rows:
         lines.append(f"| {row['Variant']} — {row['Description']} | {row['Dice']:.4f} | {row['IoU']:.4f} | "
                      f"{row['Boundary F1']:.4f} | {row['Occupancy MAE']:.3e} |")
-    (output / f"ablation_{split}.md").write_text("\n".join(lines) + "\n")
+    if suite == "upsampling":
+        lines += ["", "Same guided/blended scaffold and losses; U2 is architecturally equivalent to A1.",
+                  "Conv/Linear GMACs in CSV exclude interpolation, reassembly, grid sampling and the solver.",
+                  "CARAFE uses a pure-PyTorch reference; its runtime is not the optimized MMCV runtime.",
+                  "", "| Variant | Parameters (M) | Conv/Linear GMACs |", "|---|---:|---:|"]
+        lines += [f"| {r['Variant']} | {r['Parameters M']:.6f} | {r['Conv Linear GMACs']:.6f} |" for r in rows]
+    (output / f"{prefix}_{split}.md").write_text("\n".join(lines) + "\n")
     latex = ["% " + heading, r"\begin{tabular}{lrrrr}", r"\hline",
              r"Variant & Dice $\uparrow$ & IoU $\uparrow$ & Boundary F1 $\uparrow$ & Occupancy MAE $\downarrow$ \\", r"\hline"]
     for row in rows:
         mantissa, exponent = f"{row['Occupancy MAE']:.3e}".split("e")
-        latex.append(f"{row['Variant']} & {row['Dice']:.4f} & {row['IoU']:.4f} & {row['Boundary F1']:.4f} & "
+        latex_label = row['Description'] if suite == "upsampling" else row['Variant']
+        latex.append(f"{latex_label} & {row['Dice']:.4f} & {row['IoU']:.4f} & {row['Boundary F1']:.4f} & "
                      + f"${mantissa} \\times 10^{{{int(exponent)}}}$" + r" \\")
     latex += [r"\hline", r"\end{tabular}"]
-    (output / f"ablation_{split}.tex").write_text("\n".join(latex) + "\n")
+    (output / f"{prefix}_{split}.tex").write_text("\n".join(latex) + "\n")
     print(frame[["Variant", "Split", "Dice", "IoU", "Boundary F1", "Occupancy MAE"]].to_string(index=False), flush=True)
     return frame
 
@@ -206,19 +243,22 @@ def execute(command: list[str], log: Path) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--suite", choices=["components", "upsampling"], default="components")
     parser.add_argument("--device", choices=["auto", "cuda", "cpu", "mps"], default="auto")
     parser.add_argument("--output-root", type=Path)
     parser.add_argument("--data-root", type=Path)
-    parser.add_argument("--epochs", type=int, help="Override epochs identically for all four variants")
+    parser.add_argument("--epochs", type=int, help="Override epochs identically for all variants")
     parser.add_argument("--resume", action="store_true", help="Skip completed runs; resume unfinished runs from last.pt")
     parser.add_argument("--train-only", action="store_true", help="Train all variants and export validation only")
-    parser.add_argument("--smoke-test", action="store_true", help="Four one-epoch offline runs on generated toy data")
+    parser.add_argument("--smoke-test", action="store_true", help="One-epoch offline runs on generated toy data")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--prepare-only", action="store_true")
-    mode.add_argument("--evaluate-only", action="store_true", help="Evaluate all four completed checkpoints on test")
+    mode.add_argument("--evaluate-only", action="store_true", help="Evaluate all completed checkpoints on test")
     mode.add_argument("--collect-only", action="store_true", help="Rebuild tables from saved, verified metrics")
     args = parser.parse_args()
-    output = (args.output_root or PROJECT_ROOT / "runs" / ("rocu_kvasir_ablations_smoke" if args.smoke_test else "rocu_kvasir_ablations_seed42")).resolve()
+    suite_name = "upsampling" if args.suite == "upsampling" else "ablations"
+    suffix = "smoke" if args.smoke_test else "seed42"
+    output = (args.output_root or PROJECT_ROOT / "runs" / f"rocu_kvasir_{suite_name}_{suffix}").resolve()
     if args.smoke_test:
         if args.data_root is not None:
             parser.error("--smoke-test uses generated toy data; omit --data-root")
@@ -226,7 +266,7 @@ def main():
         if not args.data_root.exists():
             execute([sys.executable, str(PROJECT_ROOT / "scripts/create_toy_kvasir.py"),
                      "--output", str(args.data_root), "--count", "20", "--size", "64"], output / "logs/toy_data.log")
-    configs = suite_configs(output, args.data_root, args.epochs, args.smoke_test)
+    configs = suite_configs(output, args.data_root, args.epochs, args.smoke_test, args.suite)
     protocol = prepare(output, configs, args.smoke_test)
     print(f"Shared split sizes: {protocol['split_sizes']}; output: {output}", flush=True)
     if args.prepare_only:
@@ -249,7 +289,7 @@ def main():
             if args.resume and (run / "last.pt").exists():
                 command += ["--resume", str(run / "last.pt")]
             execute(command, output / "logs" / f"{run.name}.log")
-    collect(output, configs, protocol, "val")
+    collect(output, configs, protocol, "val", args.suite)
     if args.train_only:
         return
     if not args.collect_only:
@@ -266,8 +306,8 @@ def main():
             summary["held_out_test"] = json.loads((run / "test_metrics.json").read_text())
             summary["test_provenance"] = json.loads((run / "test_provenance.json").read_text())
             save_json(summary, run / "summary.json")
-    collect(output, configs, protocol, "test")
-    print(f"Saved ablation_val/test.csv, .md and .tex under {output}", flush=True)
+    collect(output, configs, protocol, "test", args.suite)
+    print(f"Saved {args.suite} val/test tables (.csv, .md, .tex) under {output}", flush=True)
 
 
 if __name__ == "__main__":

@@ -54,7 +54,8 @@ def draw_contours(ax, image, target, prediction):
         ax.contour(prediction, levels=[0.5], colors=["#E69F00"], linewidths=1.1)
 
 
-def qualitative(samples, output: Path, title: str, dpi: int):
+def qualitative(samples, output: Path, dpi: int):
+    """Paper layout: column headings and legend; row metrics stay in the CSV."""
     titles = ["Input", "Ground truth", "RoCU-Net", "Contours / detail", "Pixel errors", "Probability"]
     fig, axes = plt.subplots(len(samples), 6, figsize=(13, 2.15 * len(samples) + 0.6), squeeze=False)
     for row, sample in enumerate(samples):
@@ -74,18 +75,15 @@ def qualitative(samples, output: Path, title: str, dpi: int):
             axes[row, 3].set_ylim(y1, y0)
             axes[row, 0].add_patch(Rectangle((x0, y0), x1-x0, y1-y0, fill=False, edgecolor="#56B4E9", linewidth=1))
         axes[row, 4].imshow(error_map(pred, target))
-        im = axes[row, 5].imshow(prob, cmap="viridis", vmin=0, vmax=1)
+        axes[row, 5].imshow(prob, cmap="viridis", vmin=0, vmax=1)
         for col, ax in enumerate(axes[row]):
             ax.set_xticks([]); ax.set_yticks([])
             for spine in ax.spines.values():
                 spine.set_visible(False)
             if row == 0:
                 ax.set_title(titles[col])
-        axes[row, 0].set_ylabel(f"{sample['id'][:22]}\nDice {sample['dice']:.3f}\nIoU {sample['iou']:.3f}", fontsize=8)
-    fig.suptitle(title, y=1.01)
     fig.legend(handles=[Patch(color="#56B4E9", label="GT contour"), Patch(color="#E69F00", label="Prediction contour / FP"), Patch(color="#009E73", label="TP"), Patch(color="#CC79A7", label="FN")], loc="lower center", ncol=4, bbox_to_anchor=(0.5, 0.005), frameon=False)
     fig.tight_layout(rect=(0, 0.5 / fig.get_figheight(), 1, 1))
-    fig.colorbar(im, ax=axes[:, 5].tolist(), fraction=0.025, pad=0.02, label="P(polyp)")
     save_figure(fig, output, dpi)
 
 

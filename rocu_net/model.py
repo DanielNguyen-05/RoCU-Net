@@ -441,6 +441,7 @@ class RoCUBlock(nn.Module):
         self.uncertainty_threshold = float(uncertainty_threshold)
         self.use_semantic_carrier = bool(use_semantic_carrier)
         self.occupancy_constraint = bool(occupancy_constraint)
+        self.carrier_upsampling = "pixelshuffle"
         if not self.occupancy_constraint and self.hard_routing_inference:
             raise ValueError("Without occupancy constraint, hard_routing_inference must be false")
 
@@ -500,7 +501,9 @@ class RoCUBlock(nn.Module):
             )
 
         parent_up = F.interpolate(parent, size=expected_size, mode="nearest")
-        expanded_carrier = F.pixel_shuffle(self.carrier_expansion(carrier), 2)
+        expanded_carrier = (F.pixel_shuffle(self.carrier_expansion(carrier), 2)
+                            if self.carrier_upsampling == "pixelshuffle"
+                            else self.carrier_upsampler(carrier))
         if not self.use_semantic_carrier:
             expanded_carrier = torch.zeros_like(expanded_carrier)
         guide = self.guide_projection(encoder_feature)
@@ -560,6 +563,7 @@ class RoCUBlock(nn.Module):
             "gate_parent": gate_parent,
             "uncertainty_parent": parent_uncertainty,
             "active_fraction": solver_active.mean(),
+            "active_parent": solver_active,
         }
         return children, carrier_out, diagnostics
 
@@ -647,6 +651,7 @@ class RoCUNet(CheckpointCompatibleModule):
         uncertainty_threshold: float = 0.20,
         use_semantic_carrier: bool = True,
         occupancy_constraint: bool = True,
+        carrier_upsampling: str = "pixelshuffle",
     ):
         super().__init__()
         if len(decoder_channels) != 2:
@@ -712,6 +717,17 @@ class RoCUNet(CheckpointCompatibleModule):
             nn.init.constant_(self.coarse_head.bias, -2.0)
         for block in (self.rocu1, self.rocu2):
             nn.init.constant_(block.boundary_head.bias, -1.0)
+        if carrier_upsampling != "pixelshuffle":
+            if occupancy_constraint or hard_routing_inference:
+                raise ValueError("Upsampling controls require occupancy_constraint=false and dense inference")
+            from .upsampling import build_carrier_upsampler
+            # Install after all common layers are initialized. Preserve CPU RNG
+            # state so unrelated initialization/loader RNG is not shifted.
+            with torch.random.fork_rng(devices=[]):
+                for block in (self.rocu1, self.rocu2):
+                    block.carrier_upsampler = build_carrier_upsampler(carrier_upsampling, carrier_channels)
+                    block.carrier_upsampling = carrier_upsampling
+                    block.carrier_expansion = nn.Identity()  # Do not count unused PixelShuffle weights.
 
     @staticmethod
     def _initialize_weights(module: nn.Module) -> None:
@@ -755,6 +771,8 @@ class RoCUNet(CheckpointCompatibleModule):
             "routing_uncertainty_2": diagnostics2["uncertainty_parent"],
             "routing_fraction_1": diagnostics1["active_fraction"],
             "routing_fraction_2": diagnostics2["active_fraction"],
+            "routing_active_1": diagnostics1["active_parent"],
+            "routing_active_2": diagnostics2["active_parent"],
         }
 
 
@@ -778,6 +796,7 @@ def build_model(config: dict) -> nn.Module:
             uncertainty_threshold=float(cfg.get("routing_uncertainty_threshold", 0.20)),
             use_semantic_carrier=bool(cfg.get("use_semantic_carrier", True)),
             occupancy_constraint=bool(cfg.get("occupancy_constraint", True)),
+            carrier_upsampling=str(cfg.get("carrier_upsampling", "pixelshuffle")),
         )
     if architecture != "occupancy_unet":
         raise ValueError(f"Unsupported model architecture: {architecture}")

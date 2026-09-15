@@ -220,7 +220,7 @@ def profile_model(
             "flops_per_image": int(2 * macs_per_image),
             "gflops_per_image": 2 * macs_per_image / 1e9,
             "flops_convention": "FLOPs = 2 x MACs",
-            "macs_scope": "Conv2d and Linear only; occupancy solver elementwise operations excluded",
+            "macs_scope": "Conv2d and Linear only; occupancy solver, interpolation, CARAFE reassembly and grid sampling excluded",
             "solver_iterations_per_block": solver_iterations,
         },
         "runtime": {

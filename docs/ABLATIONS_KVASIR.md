@@ -1,5 +1,9 @@
 # Kvasir A0–A3 ablations
 
+For bilinear, PixelShuffle, CARAFE and DySample controls in the shared scaffold,
+see [upsampling ablations](UPSAMPLING_ABLATIONS.md). A0–A1 remains the comparison
+that changes only the occupancy constraint.
+
 Run the predefined four variants sequentially with one seed, 42:
 
 ```bash

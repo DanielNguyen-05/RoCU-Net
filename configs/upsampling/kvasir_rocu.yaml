@@ -1,0 +1,11 @@
+base_config: ../ablations/kvasir_a0_full.yaml
+
+experiment:
+  name: rocu_kvasir_u0_rocu_seed42
+  output_dir: runs/rocu_kvasir_upsampling_seed42
+
+data:
+  split_source: runs/rocu_kvasir_upsampling_seed42/splits
+
+model:
+  carrier_upsampling: pixelshuffle

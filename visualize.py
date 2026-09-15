@@ -131,7 +131,7 @@ def export_checkpoint(args):
         for start in range(0, len(selected), 6):
             page = selected[start:start+6]
             suffix = f"_{start//6+1:02d}"
-            qualitative(page, args.output / f"qualitative{suffix}", f"RoCU-Net | {protocol} | {selection} selection", args.dpi)
+            qualitative(page, args.output / f"qualitative{suffix}", args.dpi)
             diagnostics(page, args.output / f"mechanism{suffix}", args.dpi)
         metric_figures(frame, args.output, args.dpi)
         numeric = frame.drop(columns="sample_id")
@@ -151,7 +151,9 @@ def export_checkpoint(args):
             f"Input and masks are shown at the evaluation resolution {config['data']['image_size']}; threshold={threshold}. "
             f"Inference TTA: {model.tta}. "
             "Columns show input, ground truth, RoCU-Net prediction, contour detail cropped to the union of target and prediction, TP/FP/FN errors, and foreground probability. "
-            "The rectangle in the input defines the contour crop. TP green, FP orange, FN purple, TN black; GT contour blue, prediction contour orange.\n\n"
+            "The rectangle in the input defines the contour crop. TP green, FP orange, FN purple, TN black; GT contour blue, prediction contour orange. "
+            "Foreground probability uses a fixed [0, 1] viridis scale (purple=0, yellow=1). "
+            "The figure omits the overall title, row labels and probability colorbar; row IDs and metrics are provided in selected_samples.csv.\n\n"
             "Mechanism: auxiliary boundary probability, soft routing gate, solver-active parent cells and absolute |avgpool(P_full)-P_half|. "
             "Routing maps are internal diagnostics, not calibrated confidence or an explanation of causality. Solver-active cells depend on the checkpoint's inference routing settings. "
             "With flip TTA, solver-active maps show the fraction of views using the solver. "

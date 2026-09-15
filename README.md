@@ -334,7 +334,15 @@ python visualize.py \
   --data-root dataset/Kvasir-SEG \
   --output figures/kvasir --device cuda
   # --selection best # mặc định là phân bố đều (1 mẫu khó nhất 1 mẫu ở khoảng 25%, 1 mẫu trung vị, 1 mẫu ở khoảng 75%, 1 mẫu tốt nhất)
-  # - num-samples 5
+  # --num-samples 5
+
+python visualize.py \
+  --checkpoint runs/rocu_kvasir_seed42/best.pt \
+  --data-root dataset/Kvasir-SEG \
+  --output figures/kvasir \
+  --device cpu \
+  --num-samples 6 \
+  --selection quantiles
 ```
 
 Copy the original `splits/` directory alongside `best.pt` when moving a run.
@@ -441,3 +449,33 @@ python train.py --config configs/cvc_colondb.yaml --name rocu_cvc_colondb_transf
 Earlier experiments and their measured results are documented in
 [the refinement report](docs/COLONDB_REFINEMENT.md). Their training commands are
 historical; the canonical ColonDB config now uses the completed transfer recipe.
+
+## 13. Figure 3: routing quality versus real-image latency
+
+Use one checkpoint to measure dense and routing thresholds 0.05/0.10/0.20/0.30
+on the same real images, then export Dice–latency and actual solver-active maps:
+
+```bash
+python scripts/figure3_routing.py --checkpoint runs/rocu_kvasir_seed42/best.pt \
+  --data-root dataset/Kvasir-SEG --split val --device cuda \
+  --output figures/kvasir_routing
+```
+
+This uses 320 × 320, FP32, batch size 1, synchronized forward timing, and no TTA.
+It saves editable PDF/SVG, PNG, the caption, raw timing/metric CSVs and occupancy
+arrays. See [Figure 3 instructions](docs/FIGURE3_ROUTING.md) for timing scope,
+sample selection, reproducibility and using the A0 checkpoint.
+
+## 14. Matched upsampling controls
+
+Compare RoCU with bilinear, PixelShuffle, CARAFE and DySample-LP inside the same
+backbone, guided decoder, blending and loss scaffold:
+
+```bash
+python scripts/run_kvasir_ablations.py --suite upsampling --device cuda
+```
+
+This trains five models and exports separate validation/test tables. PixelShuffle
+is architecturally equivalent to A1; the A0–A1 pair isolates occupancy, while the
+operator controls assess upsampling choices. See
+[the exact comparison and run instructions](docs/UPSAMPLING_ABLATIONS.md).
