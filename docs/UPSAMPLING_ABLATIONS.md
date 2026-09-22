@@ -9,9 +9,9 @@ fixed. The four controls do not use the occupancy-constrained solver.
 
 | ID | Carrier upsampling at both 2x stages | Child allocation | Equivalent component variant |
 |---|---|---|---|
-| U0 — RoCU (dense) | Existing Conv-BN-SiLU + PixelShuffle | Constrained solver | A0 |
+| U0 — RoCU (dense) | Existing Conv-BN-SiLU + PixelShuffle | Constrained solver | A3 |
 | U1 — Bilinear | Bilinear, align_corners=False | Sigmoid on scores | — |
-| U2 — PixelShuffle | Existing Conv-BN-SiLU + PixelShuffle | Sigmoid on scores | A1 |
+| U2 — PixelShuffle | Existing Conv-BN-SiLU + PixelShuffle | Sigmoid on scores | A0 |
 | U3 — CARAFE | Content-aware kernel reassembly | Sigmoid on scores | — |
 | U4 — DySample-LP | Grouped learned sampling | Sigmoid on scores | — |
 
@@ -66,9 +66,11 @@ used to initialize the new runs.
 No MMCV installation or custom CUDA compilation is required. Consequently,
 CARAFE's measured runtime here would describe the **PyTorch reference**, not
 MMCV's optimized CUDA kernel. Do not use that runtime to claim the CARAFE method
-is inherently slower. The existing Conv/Linear profiler excludes reassembly,
-interpolation, grid sampling and the occupancy solver; its GMAC column is a
-partial count, not total computational cost.
+is inherently slower. The report keeps Conv/Linear GMACs and also exports an
+operator-aware estimate that adds four-tap bilinear/grid sampling or the 5x5
+CARAFE weighted reassembly. Coordinate generation, softmax, activations and the
+occupancy solver remain excluded. The 2x GFLOP value counts a multiply and an
+addition as two operations.
 
 Each control installs its operator after initializing the common modules and
 preserves the global CPU RNG state. Common parameters and loader RNG are thus
@@ -110,9 +112,11 @@ Output directory: `runs/rocu_kvasir_upsampling_seed42/`.
 
 - `upsampling_val.csv/.md/.tex` and `upsampling_test.csv/.md/.tex` contain Dice,
   IoU, Boundary F1 and occupancy residuals, with separate validation/test tables.
-- CSV also contains parameters, partial Conv/Linear GMACs, best epoch and
-  checkpoint hash. Occupancy residual is a constraint diagnostic; Dice, IoU
-  and Boundary F1 measure segmentation quality.
+- CSV also contains parameters, Conv/Linear GMACs, upsampling-operator GMACs,
+  their operator-aware sum, 2x GFLOPs, best epoch and checkpoint hash.
+  `upsampling_{val,test}_paper.tex` is the paste-ready matched table at 320x320.
+  Occupancy residual is a constraint diagnostic; Dice, IoU and Boundary F1
+  measure segmentation quality.
 - `protocol.json` records all configs, data fingerprint and manifest hashes.
 - Each run has its own checkpoint, logs, predictions and per-image metrics.
 

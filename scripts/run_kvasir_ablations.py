@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from rocu_net.compat import load_checkpoint
 from rocu_net.config import PROJECT_ROOT, load_config, resolve_project_path, save_config
 from rocu_net.data import create_or_load_splits, discover_pairs, image_content_hash
+from rocu_net.profiler import estimate_carrier_upsampling_macs
 from rocu_net.utils import save_json
 
 
@@ -202,8 +203,20 @@ def collect(output: Path, configs: list[dict], protocol: dict, split: str,
                      "Occupancy MAE full-half": full, "Occupancy MAE half-quarter": half,
                      "Checkpoint SHA256": sha256(run / "best.pt")})
         if suite == "upsampling":
+            computation = summary["lightweight"]["computation"]
+            conv_linear_gmacs = computation["gmacs_per_image"]
+            operator_macs = estimate_carrier_upsampling_macs(
+                cfg["model"].get("carrier_upsampling", "pixelshuffle"),
+                tuple(cfg["data"]["image_size"]),
+                cfg["model"]["carrier_channels"],
+            )
+            operator_gmacs = operator_macs / 1e9
+            operator_aware_gmacs = conv_linear_gmacs + operator_gmacs
             rows[-1]["Parameters M"] = summary["lightweight"]["parameters"]["millions"]
-            rows[-1]["Conv Linear GMACs"] = summary["lightweight"]["computation"]["gmacs_per_image"]
+            rows[-1]["Conv Linear GMACs"] = conv_linear_gmacs
+            rows[-1]["Upsampling Operator GMACs"] = operator_gmacs
+            rows[-1]["Operator Aware GMACs"] = operator_aware_gmacs
+            rows[-1]["Operator Aware GFLOPs 2x"] = 2 * operator_aware_gmacs
     frame = pd.DataFrame(rows)
     prefix = "upsampling" if suite == "upsampling" else "ablation"
     frame.to_csv(output / f"{prefix}_{split}.csv", index=False)
@@ -216,10 +229,19 @@ def collect(output: Path, configs: list[dict], protocol: dict, split: str,
                      f"{row['Boundary F1']:.4f} | {row['Occupancy MAE']:.3e} |")
     if suite == "upsampling":
         lines += ["", "Same guided/blended scaffold and losses; U2 is architecturally equivalent to A1.",
-                  "Conv/Linear GMACs in CSV exclude interpolation, reassembly, grid sampling and the solver.",
+                  "All costs use the configured 320 x 320 input. Operator-aware GMACs add four-tap "
+                  "bilinear/grid sampling or 5 x 5 CARAFE reassembly to Conv/Linear GMACs.",
+                  "Coordinate generation, softmax, activations and the occupancy solver remain excluded.",
+                  "The 2x GFLOP column uses one multiply plus one add per MAC.",
                   "CARAFE uses a pure-PyTorch reference; its runtime is not the optimized MMCV runtime.",
-                  "", "| Variant | Parameters (M) | Conv/Linear GMACs |", "|---|---:|---:|"]
-        lines += [f"| {r['Variant']} | {r['Parameters M']:.6f} | {r['Conv Linear GMACs']:.6f} |" for r in rows]
+                  "", "| Variant | Parameters (K) | Conv/Linear GMACs | Upsampling GMACs | Operator-aware GMACs | 2x GFLOPs |",
+                  "|---|---:|---:|---:|---:|---:|"]
+        lines += [
+            f"| {r['Variant']} | {1000 * r['Parameters M']:.3f} | {r['Conv Linear GMACs']:.6f} | "
+            f"{r['Upsampling Operator GMACs']:.6f} | {r['Operator Aware GMACs']:.6f} | "
+            f"{r['Operator Aware GFLOPs 2x']:.6f} |"
+            for r in rows
+        ]
     (output / f"{prefix}_{split}.md").write_text("\n".join(lines) + "\n")
     latex = ["% " + heading, r"\begin{tabular}{lrrrr}", r"\hline",
              r"Variant & Dice $\uparrow$ & IoU $\uparrow$ & Boundary F1 $\uparrow$ & Occupancy MAE $\downarrow$ \\", r"\hline"]
@@ -230,6 +252,24 @@ def collect(output: Path, configs: list[dict], protocol: dict, split: str,
                      + f"${mantissa} \\times 10^{{{int(exponent)}}}$" + r" \\")
     latex += [r"\hline", r"\end{tabular}"]
     (output / f"{prefix}_{split}.tex").write_text("\n".join(latex) + "\n")
+    if suite == "upsampling":
+        paper_latex = [
+            "% Matched 320 x 320 comparison. GMACs include Conv/Linear and carrier upsampling/reassembly.",
+            "% Coordinate generation, softmax, activations and the occupancy solver are excluded.",
+            "% Under FLOPs = 2 x MACs, multiply the final column by two.",
+            r"\begin{tabular}{lrrrrr}",
+            r"\hline",
+            r"Method & Dice $\uparrow$ & IoU $\uparrow$ & Boundary F1 $\uparrow$ & Params (K) $\downarrow$ & GMACs $\downarrow$ \\",
+            r"\hline",
+        ]
+        for row in rows:
+            paper_latex.append(
+                f"{row['Description']} & {row['Dice']:.4f} & {row['IoU']:.4f} & "
+                f"{row['Boundary F1']:.4f} & {1000 * row['Parameters M']:.1f} & "
+                f"{row['Operator Aware GMACs']:.3f}" + r" \\"
+            )
+        paper_latex += [r"\hline", r"\end{tabular}"]
+        (output / f"{prefix}_{split}_paper.tex").write_text("\n".join(paper_latex) + "\n")
     print(frame[["Variant", "Split", "Dice", "IoU", "Boundary F1", "Occupancy MAE"]].to_string(index=False), flush=True)
     return frame
 

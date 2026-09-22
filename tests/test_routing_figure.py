@@ -7,8 +7,8 @@ import torch
 import rocu_net.model as model_module
 from rocu_net.model import RoCUNet
 from rocu_net.routing_figure import (balanced_mode_orders, extract_routing_maps, measure_routing,
-                                    repeat_measurements, save_paper_table, set_routing_mode,
-                                    summarize_measurements)
+                                    repeat_measurements, save_dense_routed_table, save_paper_table,
+                                    set_routing_mode, summarize_measurements)
 
 
 def small_model():
@@ -129,3 +129,7 @@ def test_paper_summary_uses_all_repeats_sample_sd_and_paired_dense(tmp_path):
     save_paper_table(result, tmp_path)
     assert "10.000 ± 2.828" in (tmp_path / "routing_summary.md").read_text()
     assert r"\tau_r=0.20" in (tmp_path / "routing_summary.tex").read_text()
+    compact = save_dense_routed_table(result, tmp_path, .2)
+    assert list(compact.active_cell_ratio) == [1., .25]
+    assert "Dense solver & 0.800000 & 100.00" in (tmp_path / "routing_dense_vs_routed.tex").read_text()
+    assert r"Routed, $\tau_r=0.20$ & 0.790000 & 25.00" in (tmp_path / "routing_dense_vs_routed.tex").read_text()

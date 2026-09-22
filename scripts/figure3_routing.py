@@ -20,8 +20,8 @@ from rocu_net.config import resolve_project_path
 from rocu_net.data import JointTransform, PolypSegDataset, _read_manifest
 from rocu_net.model import build_model
 from rocu_net.routing_figure import (balanced_mode_orders, draw_routing_figure, measure_routing,
-                                     repeat_measurements, save_paper_table, save_sample_arrays,
-                                     set_routing_mode, summarize_measurements)
+                                     repeat_measurements, save_dense_routed_table, save_paper_table,
+                                     save_sample_arrays, set_routing_mode, summarize_measurements)
 from rocu_net.utils import get_device, implementation_fingerprint, save_json, set_seed
 
 
@@ -60,6 +60,19 @@ def figure_caption(report: dict, illustration: dict) -> str:
     )
 
 
+def dense_routed_caption(report: dict, tau: float) -> str:
+    return (
+        "Dense-versus-routed inference using the same RoCU-Net checkpoint on all "
+        f"{report['n_images']} real {report['split']} images. Inputs are 320 x 320, batch size "
+        f"{report['batch_size']}, FP32 without TTA, on {report['hardware']['name']}. Active-cell ratio "
+        "is the fraction of parent cells that execute the occupancy solver, aggregated across both "
+        f"stages and all images. Routed inference uses tau_r={tau:.2f}. Latency is synchronized "
+        f"forward time reported as mean +/- sample SD over {report['repeats']} complete split repeats; "
+        "loading, preprocessing, transfers, metrics and export are excluded. Convolutions and "
+        "prediction heads remain dense.\n"
+    )
+
+
 def render(output: Path, dpi: int, illustration_threshold: float | None = None):
     report = json.loads((output / "measurement.json").read_text())
     for name, expected in report["artifact_sha256"].items():
@@ -73,6 +86,9 @@ def render(output: Path, dpi: int, illustration_threshold: float | None = None):
         if illustration_threshold not in report["thresholds"]:
             raise ValueError("Illustration threshold must be one of the measured thresholds")
         illustration.update(tau_r=illustration_threshold, mode=f"tau_{illustration_threshold:g}")
+    save_dense_routed_table(summary, output, illustration["tau_r"])
+    (output / "routing_dense_vs_routed_caption.txt").write_text(
+        dense_routed_caption(report, illustration["tau_r"]), encoding="utf-8")
     with np.load(output / "samples" / illustration["mode"] / "maps.npz") as archive:
         sample = {name: archive[name] for name in archive.files}
     draw_routing_figure(summary, sample, label=f"τr = {illustration['tau_r']:.2f}",
@@ -97,16 +113,19 @@ def main():
     parser.add_argument("--sample-id", help="Image ID from the selected split; default: seeded random, independent of scores")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--warmup", type=int, default=30, help="Real-image warmup forwards per mode per repeat")
-    parser.add_argument("--repeats", type=int, default=5, help="Complete timed passes; multiples of 5 balance the default modes")
+    parser.add_argument("--repeats", type=int, default=5,
+                        help="Complete timed passes; must be a multiple of the number of measured modes")
     parser.add_argument("--cpu-threads", type=int, help="Fix CPU intra-op threads for every mode, including CUDA host work")
     parser.add_argument("--seed", type=int, default=42, help="Illustration selection and mode-order seed")
     parser.add_argument("--dpi", type=int, default=300)
+    parser.add_argument("--table-only", action="store_true",
+                        help="Measure and export tables/raw data without rendering or saving illustration panels")
     parser.add_argument("--render-only", type=Path, metavar="RESULT_DIR", help="Redraw saved measurements without inference")
     args = parser.parse_args()
     if args.dpi < 1:
         parser.error("dpi must be positive")
     if args.render_only:
-        if args.checkpoint or args.output:
+        if args.checkpoint or args.output or args.table_only:
             parser.error("--render-only takes a completed result directory; omit --checkpoint/--output")
         render(args.render_only.expanduser().resolve(), args.dpi, args.illustration_threshold)
         return
@@ -157,6 +176,8 @@ def main():
     model.load_state_dict(checkpoint["model"])
     set_routing_mode(model, None)
     modes = [("dense", None)] + [(f"tau_{t:g}", t) for t in args.thresholds]
+    if args.repeats % len(modes):
+        parser.error(f"--repeats must be a multiple of {len(modes)} so every mode occupies every timing position equally")
     hardware_name = (torch.cuda.get_device_name(device) if device.type == "cuda"
                      else f"{platform.processor() or platform.machine()} ({device.type.upper()})")
     if device.type == "cpu":
@@ -182,7 +203,7 @@ def main():
         "thresholds": args.thresholds, "warmup_forwards_per_mode_per_repeat": args.warmup,
         "repeats": args.repeats, "seed": args.seed,
         "mode_order_design": "Seeded permutation, then cyclic rotation; each mode occupies every position "
-                             "once per complete cycle of five repeats with the default five modes",
+                             f"once per complete cycle of {len(modes)} repeats",
         "planned_mode_order_per_repeat": [[modes[i][0] for i in order] for order in
                                            balanced_mode_orders(len(modes), args.repeats, args.seed)],
         "latency_sd_definition": "Sample SD (ddof=1) across complete-repeat mean latencies; not a confidence interval",
@@ -210,15 +231,20 @@ def main():
     repeat_measurements(timings).to_csv(output / "latency_per_repeat.csv", index=False)
     summary.to_csv(output / "routing_summary.csv", index=False)
     save_paper_table(summary, output)
-    for label, sample in samples.items():
-        save_sample_arrays(sample, output / "samples" / label, threshold)
+    save_dense_routed_table(summary, output, args.illustration_threshold)
+    (output / "routing_dense_vs_routed_caption.txt").write_text(
+        dense_routed_caption(report, args.illustration_threshold), encoding="utf-8")
+    if not args.table_only:
+        for label, sample in samples.items():
+            save_sample_arrays(sample, output / "samples" / label, threshold)
     report["mode_order_per_repeat"] = orders
     report["measurement_finished_utc"] = datetime.now(timezone.utc).isoformat()
     report["artifact_sha256"] = {str(p.relative_to(output)): sha256(p) for p in sorted(output.rglob("*")) if p.is_file()}
     save_json(report, output / "measurement.json")
-    render(output, args.dpi)
+    if not args.table_only:
+        render(output, args.dpi)
     print(summary.to_string(index=False))
-    print(f"Figure 3 and raw measurements saved to {output}")
+    print(f"Routing tables and raw measurements saved to {output}")
 
 
 if __name__ == "__main__":

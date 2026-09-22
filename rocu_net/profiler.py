@@ -13,6 +13,32 @@ from torch import nn
 from .utils import synchronize
 
 
+def estimate_carrier_upsampling_macs(
+    operator: str,
+    image_size: tuple[int, int],
+    carrier_channels: int,
+    *,
+    carafe_kernel_size: int = 5,
+) -> int:
+    """Estimate the non-convolution work of both carrier upsampling stages."""
+    height, width = (int(value) for value in image_size)
+    if height % 4 or width % 4:
+        raise ValueError("Carrier upsampling profiling requires image dimensions divisible by four")
+    # Stage outputs are half and full resolution. Each bilinear output uses four
+    # source samples; each CARAFE output contracts a k² neighborhood.
+    output_elements = int(carrier_channels) * (
+        (height // 2) * (width // 2) + height * width
+    )
+    normalized = str(operator).lower()
+    if normalized == "carafe":
+        return output_elements * int(carafe_kernel_size) ** 2
+    if normalized in {"bilinear", "dysample"}:
+        return output_elements * 4
+    if normalized == "pixelshuffle":
+        return 0
+    raise ValueError(f"Unsupported carrier upsampling operator: {operator}")
+
+
 def count_conv_linear_macs(model: nn.Module, example: torch.Tensor) -> int:
     """Count multiply-accumulates for Conv2d and Linear modules."""
     total = 0
@@ -43,6 +69,50 @@ def count_conv_linear_macs(model: nn.Module, example: torch.Tensor) -> int:
         for hook in hooks:
             hook.remove()
     return total
+
+
+def count_upsampling_operator_macs(model: nn.Module, example: torch.Tensor) -> tuple[int, dict[str, int]]:
+    """Estimate MACs intrinsic to the alternative carrier upsamplers.
+
+    Conv2d work inside CARAFE and DySample is already counted by
+    :func:`count_conv_linear_macs`. This function adds the spatial reassembly or
+    four-tap interpolation work which module hooks on Conv2d cannot see. It does
+    not count coordinate generation, softmax, activations, or RoCU's solver.
+    """
+    from .upsampling import BilinearUpsampling, CARAFE, DySampleLP
+
+    total = 0
+    breakdown: dict[str, int] = {}
+    hooks = []
+
+    def operator_hook(module: nn.Module, inputs, output):
+        nonlocal total
+        del inputs
+        if isinstance(module, CARAFE):
+            name = "carafe_reassembly"
+            macs = int(output.numel() * module.kernel_size**2)
+        elif isinstance(module, BilinearUpsampling):
+            name = "bilinear_interpolation"
+            macs = int(output.numel() * 4)
+        elif isinstance(module, DySampleLP):
+            name = "dysample_bilinear_sampling"
+            macs = int(output.numel() * 4)
+        else:  # pragma: no cover - hooks are registered only on these classes.
+            return
+        total += macs
+        breakdown[name] = breakdown.get(name, 0) + macs
+
+    operator_types = (BilinearUpsampling, CARAFE, DySampleLP)
+    for module in model.modules():
+        if isinstance(module, operator_types):
+            hooks.append(module.register_forward_hook(operator_hook))
+    try:
+        with torch.inference_mode():
+            model(example)
+    finally:
+        for hook in hooks:
+            hook.remove()
+    return total, breakdown
 
 
 def _device_name(device: torch.device) -> str:
@@ -142,7 +212,10 @@ def profile_model(
         parameter.numel() for parameter in model.parameters() if parameter.requires_grad
     )
     macs_batch = count_conv_linear_macs(model, example)
+    upsampling_macs_batch, upsampling_breakdown_batch = count_upsampling_operator_macs(model, example)
     macs_per_image = macs_batch / batch_size
+    upsampling_macs_per_image = upsampling_macs_batch / batch_size
+    operator_aware_macs_per_image = macs_per_image + upsampling_macs_per_image
     with torch.inference_mode():
         diagnostic_outputs = model(example)
     routing: dict[str, float | int | bool] | None = None
@@ -219,8 +292,24 @@ def profile_model(
             "gmacs_per_image": macs_per_image / 1e9,
             "flops_per_image": int(2 * macs_per_image),
             "gflops_per_image": 2 * macs_per_image / 1e9,
+            "conv_linear_macs_per_image": int(macs_per_image),
+            "conv_linear_gmacs_per_image": macs_per_image / 1e9,
+            "upsampling_operator_macs_per_image": int(upsampling_macs_per_image),
+            "upsampling_operator_gmacs_per_image": upsampling_macs_per_image / 1e9,
+            "upsampling_operator_breakdown_per_image": {
+                name: int(value / batch_size)
+                for name, value in upsampling_breakdown_batch.items()
+            },
+            "operator_aware_macs_per_image": int(operator_aware_macs_per_image),
+            "operator_aware_gmacs_per_image": operator_aware_macs_per_image / 1e9,
+            "operator_aware_flops_per_image": int(2 * operator_aware_macs_per_image),
+            "operator_aware_gflops_per_image": 2 * operator_aware_macs_per_image / 1e9,
             "flops_convention": "FLOPs = 2 x MACs",
-            "macs_scope": "Conv2d and Linear only; occupancy solver, interpolation, CARAFE reassembly and grid sampling excluded",
+            "macs_scope": (
+                "Legacy macs/gmacs fields count Conv2d and Linear only. Operator-aware fields also "
+                "estimate four-tap bilinear/grid sampling and CARAFE weighted reassembly; coordinate "
+                "generation, softmax, activations and the occupancy solver remain excluded."
+            ),
             "solver_iterations_per_block": solver_iterations,
         },
         "runtime": {

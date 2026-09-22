@@ -6,6 +6,28 @@ dense, and routing thresholds 0.05, 0.10, 0.20, 0.30. Dense disables only
 `hard_routing_inference`; soft gating remains enabled. A1/A2/A3 ablation
 checkpoints are rejected.
 
+For the compact dense-versus-routed table on the fixed test split, without
+recreating the figure, run this command on the same GPU used for the throughput
+report:
+
+```bash
+python scripts/figure3_routing.py \
+  --checkpoint runs/rocu_kvasir_seed42/best.pt \
+  --data-root dataset/Kvasir-SEG \
+  --split test --device cuda --cpu-threads 6 \
+  --thresholds 0.10 --illustration-threshold 0.10 \
+  --warmup 30 --repeats 10 --batch-size 1 --seed 42 \
+  --table-only \
+  --output figures/kvasir_routing_test_gpu
+```
+
+Ten repeats form five complete two-mode timing cycles, so dense and routed each
+occupy both timing positions equally. The command produces
+`routing_dense_vs_routed.{csv,md,tex}`, a matching caption text file, the full
+summary, every raw timing and per-image metric, plus checkpoint/data/source
+hashes. It does not train, select a threshold, render a figure, or include
+preprocessing and transfers in timing.
+
 Run on the server from the project directory, with the device otherwise idle:
 
 ```bash

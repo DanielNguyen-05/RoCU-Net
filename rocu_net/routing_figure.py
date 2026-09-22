@@ -201,6 +201,42 @@ def save_paper_table(summary: pd.DataFrame, output: Path):
     (output / "routing_summary.md").write_text("\n".join(lines) + "\n")
 
 
+def save_dense_routed_table(summary: pd.DataFrame, output: Path, tau: float = .10) -> pd.DataFrame:
+    """Export the compact same-checkpoint dense-vs-routed evidence table."""
+    dense = summary.loc[summary["mode"] == "dense"]
+    routed = summary.loc[summary["tau_r"].notna() & np.isclose(summary["tau_r"], tau)]
+    if len(dense) != 1 or len(routed) != 1:
+        raise ValueError(f"Need exactly one dense row and one tau_r={tau:.2f} row")
+    selected = pd.concat((dense, routed), ignore_index=True).copy()
+    selected["display_mode"] = ["Dense solver", f"Routed, tau_r={tau:.2f}"]
+    selected["active_cell_ratio"] = 1 - selected["solver_skip_fraction"]
+    columns = ["display_mode", "dice", "active_cell_ratio", "latency_mean_ms_image",
+               "latency_repeat_sd_ms", "fps", "latency_reduction_percent", "dice_delta_vs_dense"]
+    compact = selected[columns]
+    compact.to_csv(output / "routing_dense_vs_routed.csv", index=False)
+
+    tex = [r"\begin{tabular}{lrrr}", r"\toprule",
+           r"Mode & Dice $\uparrow$ & Active cells (\%) $\downarrow$ & Latency (ms/image) $\downarrow$ \\",
+           r"\midrule"]
+    markdown = ["| Mode | Dice | Active cells (%) | Latency (ms/image) |",
+                "|---|---:|---:|---:|"]
+    for row in compact.itertuples(index=False):
+        latex_mode = "Dense solver" if row.display_mode == "Dense solver" else rf"Routed, $\tau_r={tau:.2f}$"
+        latency = f"{row.latency_mean_ms_image:.3f} ± {row.latency_repeat_sd_ms:.3f}"
+        tex.append(f"{latex_mode} & {row.dice:.6f} & {100 * row.active_cell_ratio:.2f} & "
+                   rf"${row.latency_mean_ms_image:.3f} \pm {row.latency_repeat_sd_ms:.3f}$" + r" \\")
+        markdown.append(f"| {row.display_mode} | {row.dice:.6f} | "
+                        f"{100 * row.active_cell_ratio:.2f} | {latency} |")
+    tex.extend([r"\bottomrule", r"\end{tabular}"])
+    routed_row = compact.iloc[1]
+    note = (f"Batch 1; latency is mean ± sample SD across complete test-split repeats. "
+            f"At tau_r={tau:.2f}, latency changed by {routed_row['latency_reduction_percent']:.2f}% "
+            f"and Dice by {routed_row['dice_delta_vs_dense']:+.2e} relative to dense.")
+    (output / "routing_dense_vs_routed.tex").write_text("\n".join(tex) + "\n")
+    (output / "routing_dense_vs_routed.md").write_text("\n".join(markdown) + "\n\n" + note + "\n")
+    return compact
+
+
 def draw_routing_figure(summary, sample, *, label, sample_id, split, hardware,
                         batch_size, threshold, output: Path, dpi=300):
     """Render measured data, with editable vector exports and no invented points."""

@@ -5,6 +5,7 @@ from torch.nn import functional as F
 
 from rocu_net.losses import build_loss
 from rocu_net.model import build_model
+from rocu_net.profiler import count_upsampling_operator_macs, estimate_carrier_upsampling_macs
 from rocu_net.upsampling import CARAFE, DySampleLP
 from scripts.run_kvasir_ablations import suite_configs, validate_variants
 
@@ -104,3 +105,16 @@ def test_upsampling_suite_rejects_changed_loss_or_training_protocol(tmp_path):
             pass
         else:
             raise AssertionError("A second changed factor must be rejected")
+
+
+def test_upsampling_costs_include_carafe_reassembly_and_match_actual_shapes():
+    assert estimate_carrier_upsampling_macs("pixelshuffle", (320, 320), 32) == 0
+    assert estimate_carrier_upsampling_macs("bilinear", (320, 320), 32) == 16_384_000
+    assert estimate_carrier_upsampling_macs("dysample", (320, 320), 32) == 16_384_000
+    assert estimate_carrier_upsampling_macs("carafe", (320, 320), 32) == 102_400_000
+
+    module = CARAFE(4, kernel_size=3, compressed_channels=4)
+    actual, breakdown = count_upsampling_operator_macs(module, torch.randn(1, 4, 3, 5))
+    # 4 channels x 6 x 10 output locations x 3^2 reassembly weights.
+    assert actual == 2_160
+    assert breakdown == {"carafe_reassembly": 2_160}
