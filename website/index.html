@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RoCU-Net: Routed Occupancy-Constrained Upsampling for Lightweight Polyp Segmentation</title>
+  <meta name="description" content="RoCU-Net is a 0.28M-parameter polyp segmentation network that redistributes coarse foreground occupancy to finer resolutions under an exact parent–child mean constraint. ICAART 2027.">
+  <meta name="keywords" content="RoCU-Net, polyp segmentation, lightweight segmentation, occupancy-constrained upsampling, colonoscopy, ICAART 2027">
+  <meta name="author" content="Hai-Dang Nguyen, Tran-Quoc Duy Nguyen, Hoai-Thuong Dang, Xuan-Nam Cao">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="RoCU-Net: Routed Occupancy-Constrained Upsampling for Lightweight Polyp Segmentation">
+  <meta property="og:description" content="A 0.28M-parameter polyp segmentation network with exact cross-scale occupancy conservation. ICAART 2027.">
+  <meta property="og:image" content="https://danielnguyen-05.github.io/RoCU-Net/static/images/overview.png">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="static/images/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/css/style.css">
+
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <script defer src="static/js/main.js"></script>
+</head>
+<body>
+
+<nav class="topnav" aria-label="Sections">
+  <div class="topnav-inner">
+    <a class="brand" href="#top">RoCU-Net</a>
+    <div class="topnav-links">
+      <a href="#abstract">Abstract</a>
+      <a href="#method">Method</a>
+      <a href="#demo">Interactive</a>
+      <a href="#results">Results</a>
+      <a href="#ablation">Ablation</a>
+      <a href="#bibtex">BibTeX</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="container narrow center">
+    <p class="venue">ICAART 2027</p>
+    <h1 class="title">RoCU-Net: Routed Occupancy-Constrained Upsampling for Lightweight Polyp Segmentation</h1>
+
+    <div class="authors">
+      <span class="author">Hai-Dang Nguyen<sup>1,3</sup></span>
+      <span class="author">Tran-Quoc Duy Nguyen<sup>1,3</sup></span>
+      <span class="author">Hoai-Thuong Dang<sup>2,3</sup></span>
+      <span class="author">Xuan-Nam Cao<sup>1,3,*</sup></span>
+    </div>
+
+    <div class="affiliations">
+      <span><sup>1</sup>Faculty of Information Technology, University of Science, Ho Chi Minh City, Vietnam</span>
+      <span><sup>2</sup>Artificial Intelligence Laboratory, University of Science, Ho Chi Minh City, Vietnam</span>
+      <span><sup>3</sup>Vietnam National University, Ho Chi Minh City, Vietnam</span>
+      <span class="corresponding"><sup>*</sup>Corresponding author</span>
+    </div>
+
+    <div class="link-buttons">
+      <span class="btn disabled" aria-disabled="true" title="The paper will be available once the ICAART 2027 proceedings are published">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm0 2.5L17.5 8H14zM8 13h8v1.5H8zm0 3h8v1.5H8zm0-6h4v1.5H8z"/></svg>
+        <span>Paper (coming soon)</span>
+      </span>
+      <a class="btn" href="https://github.com/DanielNguyen-05/RoCU-Net" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.08 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>
+        <span>Code</span>
+      </a>
+      <a class="btn" href="#bibtex">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h12a2 2 0 0 1 2 2v18l-8-4-8 4V4a2 2 0 0 1 2-2z"/></svg>
+        <span>BibTeX</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<section class="section teaser">
+  <div class="container">
+    <div class="stats">
+      <div class="stat"><span class="stat-value">0.28M</span><span class="stat-label">parameters</span></div>
+      <div class="stat"><span class="stat-value">1.12G</span><span class="stat-label">FLOPs at 320 × 320</span></div>
+      <div class="stat"><span class="stat-value">96 FPS</span><span class="stat-label">batch-1 FP32, RTX 4060 Ti</span></div>
+      <div class="stat"><span class="stat-value">3.1 × 10<sup>−9</sup></span><span class="stat-label">cross-scale occupancy error</span></div>
+    </div>
+    <h2 class="tagline"><span class="dnerf">RoCU-Net</span> recovers fine polyp boundaries by redistributing coarse foreground occupancy to finer resolutions, with exact parent–child consistency and only 0.28M parameters.</h2>
+    <figure class="figure">
+      <img src="static/images/accuracy_vs_params.svg" alt="Mean Dice versus number of parameters for representative polyp segmentation models" class="teaser-img">
+      <figcaption><strong>Accuracy–parameter trade-off.</strong> Mean Dice over CVC-ClinicDB, CVC-ColonDB and Kvasir-SEG against parameter count (log scale). RoCU-Net reaches the highest mean Dice among the compared models with about 0.28M parameters.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section" id="abstract">
+  <div class="container narrow">
+    <h2 class="section-title">Abstract</h2>
+    <div class="prose justify">
+      <p>Polyp segmentation from colonoscopy images is crucial for computer-aided colorectal cancer detection, yet it faces challenges due to diverse polyp appearances and the strict computational budgets of real-time clinical deployment. Existing lightweight models often struggle to balance efficiency with precision, typically losing fine boundary details during upsampling. To address this, we propose RoCU-Net, a highly efficient encoder-decoder architecture driven by a novel Routed Occupancy-Constrained Upsampling (RoCU) mechanism. Rather than relying on computationally heavy refinement modules, RoCU intelligently distributes coarse occupancy probabilities to higher-resolution pixels. This allocation is guided by a compact semantic carrier and regulated by an uncertainty-modulated gate, strictly preserving the mathematical consistency between resolution scales. To further optimize inference, we introduce a routing strategy that allows high-confidence regions to bypass the iterative allocation solver, significantly reducing computational overhead. Extensive evaluations on the CVC-ClinicDB, CVC-ColonDB, and Kvasir-SEG datasets demonstrate that RoCU-Net matches or outperforms recent state-of-the-art lightweight baselines. Operating with merely 0.3M parameters and 1.1 GFLOPs, our model achieves highly competitive Dice and IoU scores across all benchmarks. Comprehensive ablation studies confirm that our occupancy constraints, propagated carrier, and adaptive blending effectively synergize to deliver sharp, precise boundaries under stringent resource constraints.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section alt" id="method">
+  <div class="container">
+    <h2 class="section-title">Method</h2>
+    <div class="prose narrow-text">
+      <p>A lightweight decoder has the least capacity to spare exactly where boundary detail is recovered: the final upsampling steps. RoCU-Net asks how a compact decoder should turn a coarse foreground estimate into finer predictions. Each coarse cell is read as a <em>local foreground occupancy</em>, and its four children at the next resolution are required to keep the same mean probability. This separates <em>how much</em> foreground a cell contains from <em>where</em> inside the cell it lies, and makes cross-scale consistency directly verifiable.</p>
+    </div>
+
+    <figure class="figure wide">
+      <a href="static/images/overview.png" target="_blank" rel="noopener" title="Open full resolution"><img src="static/images/overview.png" alt="RoCU-Net architecture overview and RoCU block"></a>
+      <figcaption><strong>Overview of RoCU-Net.</strong> A truncated MobileNetV3-Large encoder produces features at 1/2, 1/4, 1/8 and 1/16 resolution. Two additive decoder stages produce a quarter-resolution occupancy and a 32-channel semantic carrier. Two RoCU stages recover half and full resolution using encoder and shallow-image guidance.</figcaption>
+    </figure>
+
+    <div class="cards">
+      <article class="card">
+        <div class="card-index">1</div>
+        <h3>Occupancy-constrained allocation</h3>
+        <p>For each parent cell with occupancy \(p\), one shared offset \(b\) turns four child scores into bounded occupancies whose mean matches the parent:</p>
+        <div class="eq">\[ r_j = \sigma(s_j + b), \qquad \tfrac{1}{4}\textstyle\sum_{j=1}^{4} r_j = p. \]</div>
+        <p>Because the sigmoid is monotone, the scores decide the spatial distribution while \(b\) alone fixes the total. \(b\) is found by 24 bisection steps; gradients follow from the implicit function theorem at the root.</p>
+      </article>
+      <article class="card">
+        <div class="card-index">2</div>
+        <h3>Propagated semantic carrier</h3>
+        <p>A scalar probability says nothing about where the contour lies inside a cell. A 32-channel carrier \(Z\) travels with the occupancy through both high-resolution transitions:</p>
+        <div class="eq">\[ Z^{+} = \Phi\big(\mathrm{PS}_2(A_Z(Z)) + A_E(E)\big). \]</div>
+        <p>It drives a boundary head, a gate head and the score head, using encoder features at 1/2 resolution and a 24-channel full-resolution shallow guide.</p>
+      </article>
+      <article class="card">
+        <div class="card-index">3</div>
+        <h3>Shared-gate blending and routing</h3>
+        <p>An ambiguity-modulated gate, shared by the four children, blends the refined allocation with exact parent replication:</p>
+        <div class="eq">\[ u = 4p(1-p), \quad g = u\,\hat g, \quad q_j = (1-g)\,p + g\,r_j. \]</div>
+        <p>The mean is preserved for any \(g\). At inference, cells with \(u &lt; \tau_r\) skip the solver; the change in each child is bounded by about 0.0077 at \(\tau_r = 0.10\).</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="demo">
+  <div class="container">
+    <h2 class="section-title">Interactive: one RoCU allocation step</h2>
+    <p class="section-sub">Adjust a parent cell and its four child scores. The solver finds \(b\) with the same bracket and 24 bisection steps as the paper. However you move the sliders, the mean of the four children stays equal to the parent.</p>
+
+    <div class="demo">
+      <div class="demo-controls">
+        <div class="presets" role="group" aria-label="Presets">
+          <button type="button" class="chip" data-preset="boundary">Boundary cell</button>
+          <button type="button" class="chip" data-preset="background">Confident background</button>
+          <button type="button" class="chip" data-preset="polyp">Confident polyp</button>
+        </div>
+
+        <label class="ctrl">
+          <span class="ctrl-name">Parent occupancy \(p\)</span>
+          <input type="range" id="p" min="0.01" max="0.99" step="0.01" value="0.50">
+          <output id="p-out">0.50</output>
+        </label>
+
+        <div class="score-grid">
+          <label class="ctrl"><span class="ctrl-name">\(s_1\) top-left</span><input type="range" id="s1" min="-4" max="4" step="0.1" value="2.0"><output id="s1-out">2.0</output></label>
+          <label class="ctrl"><span class="ctrl-name">\(s_2\) top-right</span><input type="range" id="s2" min="-4" max="4" step="0.1" value="0.5"><output id="s2-out">0.5</output></label>
+          <label class="ctrl"><span class="ctrl-name">\(s_3\) bottom-left</span><input type="range" id="s3" min="-4" max="4" step="0.1" value="0.0"><output id="s3-out">0.0</output></label>
+          <label class="ctrl"><span class="ctrl-name">\(s_4\) bottom-right</span><input type="range" id="s4" min="-4" max="4" step="0.1" value="-2.0"><output id="s4-out">-2.0</output></label>
+        </div>
+
+        <label class="ctrl">
+          <span class="ctrl-name">Learned gate \(\hat g\)</span>
+          <input type="range" id="ghat" min="0" max="1" step="0.01" value="0.90">
+          <output id="ghat-out">0.90</output>
+        </label>
+
+        <label class="ctrl">
+          <span class="ctrl-name">Routing threshold \(\tau_r\)</span>
+          <input type="range" id="tau" min="0" max="0.5" step="0.01" value="0.10">
+          <output id="tau-out">0.10</output>
+        </label>
+
+        <label class="toggle">
+          <input type="checkbox" id="routing" checked>
+          <span>Hard routing at inference</span>
+        </label>
+      </div>
+
+      <div class="demo-view">
+        <div class="cells">
+          <div class="cell-block">
+            <div class="cell parent" id="parent-cell"><span id="parent-val">0.50</span></div>
+            <span class="cell-caption">Parent \(p\)</span>
+          </div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="cell-block">
+            <div class="children">
+              <div class="cell child" id="c1"><span></span></div>
+              <div class="cell child" id="c2"><span></span></div>
+              <div class="cell child" id="c3"><span></span></div>
+              <div class="cell child" id="c4"><span></span></div>
+            </div>
+            <span class="cell-caption">Children \(q_j\)</span>
+          </div>
+        </div>
+
+        <div class="colorbar" aria-hidden="true"><span>0</span><div class="bar"></div><span>1</span></div>
+
+        <div class="status" id="status"></div>
+
+        <dl class="readout">
+          <div><dt>Ambiguity \(u = 4p(1-p)\)</dt><dd id="r-u"></dd></div>
+          <div><dt>Gate \(g = u\,\hat g\)</dt><dd id="r-g"></dd></div>
+          <div><dt>Offset \(b\)</dt><dd id="r-b"></dd></div>
+          <div><dt>Mean of children</dt><dd id="r-mean"></dd></div>
+          <div><dt>|mean − p|</dt><dd id="r-err" class="good"></dd></div>
+          <div><dt>Without constraint, mean \(\sigma(s_j)\)</dt><dd id="r-unc"></dd></div>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt" id="results">
+  <div class="container">
+    <h2 class="section-title">Results</h2>
+    <p class="section-sub">Baseline results are taken from the LV-UNet benchmark. <strong>Bold</strong>: best; <u>underline</u>: second best.</p>
+
+    <div class="table-wrap">
+      <table class="results">
+        <thead>
+          <tr>
+            <th rowspan="2" class="left">Method</th>
+            <th colspan="2">CVC-ClinicDB</th>
+            <th colspan="2">CVC-ColonDB</th>
+            <th colspan="2">Kvasir-SEG</th>
+            <th rowspan="2">Params</th>
+            <th rowspan="2">FLOPs</th>
+          </tr>
+          <tr>
+            <th>IoU</th><th>Dice</th><th>IoU</th><th>Dice</th><th>IoU</th><th>Dice</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="left">UNet</td><td>0.7649</td><td>0.8638</td><td>0.7425</td><td>0.8387</td><td>0.7327</td><td>0.8440</td><td>7.8M</td><td>12.15G</td></tr>
+          <tr><td class="left">Attention-UNet</td><td>0.7955</td><td>0.8839</td><td>0.7523</td><td>0.8487</td><td>0.7449</td><td>0.8512</td><td>8.7M</td><td>16.79G</td></tr>
+          <tr><td class="left">UNet++</td><td>0.7951</td><td>0.8832</td><td>0.7246</td><td>0.8294</td><td>0.7565</td><td>0.8598</td><td>9.2M</td><td>34.77G</td></tr>
+          <tr><td class="left">UNeXt</td><td>0.7709</td><td>0.8660</td><td>0.6613</td><td>0.7774</td><td>0.6880</td><td>0.8115</td><td>1.5M</td><td>0.58G</td></tr>
+          <tr><td class="left">MALUNet</td><td>0.4994</td><td>0.6565</td><td>0.5361</td><td>0.6860</td><td>0.5724</td><td>0.7219</td><td>0.2M</td><td>0.09G</td></tr>
+          <tr><td class="left">EGEUNet</td><td>0.5190</td><td>0.6774</td><td>0.5744</td><td>0.7098</td><td>0.5342</td><td>0.6928</td><td>53.4K</td><td>0.08G</td></tr>
+          <tr><td class="left">U-KAN</td><td>0.8243</td><td>0.9017</td><td>0.7367</td><td>0.8353</td><td>0.7338</td><td>0.8438</td><td>25.4M</td><td>10.5G</td></tr>
+          <tr><td class="left">MobileNetV3-Large-UNet</td><td>0.8347</td><td>0.9087</td><td>0.7802</td><td>0.8700</td><td>0.7804</td><td>0.8747</td><td>2.0M</td><td>0.51G</td></tr>
+          <tr><td class="left">LV-UNet</td><td><b>0.8514</b></td><td><b>0.9183</b></td><td><u>0.7964</u></td><td><u>0.8808</u></td><td><u>0.8069</u></td><td><u>0.8917</u></td><td>0.9M</td><td>0.22G</td></tr>
+          <tr class="ours"><td class="left">RoCU-Net (ours)</td><td><u>0.8506</u></td><td><u>0.9102</u></td><td><b>0.8301</b></td><td><b>0.8969</b></td><td><b>0.8358</b></td><td><b>0.9028</b></td><td>0.3M</td><td>1.12G</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="highlights">
+      <div class="highlight"><span class="h-num">+1.61</span><span class="h-text">Dice over LV-UNet on CVC-ColonDB</span></div>
+      <div class="highlight"><span class="h-num">+1.11</span><span class="h-text">Dice over LV-UNet on Kvasir-SEG</span></div>
+      <div class="highlight"><span class="h-num">~14%</span><span class="h-text">of the parameters of MobileNetV3-Large-UNet, with higher Dice on all three datasets</span></div>
+    </div>
+
+    <h3 class="subsection-title">Qualitative results</h3>
+    <figure class="figure wide">
+      <a href="static/images/qualitative.jpg" target="_blank" rel="noopener" title="Open full resolution"><img src="static/images/qualitative.jpg" alt="Qualitative segmentation results on Kvasir-SEG"></a>
+      <figcaption><strong>Kvasir-SEG test set.</strong> From left to right: input, ground truth, prediction, enlarged contour detail, pixel-wise errors and predicted probability. Successful and failed cases are both shown; the first row misses a secondary polyp, while lobulated and small polyps are outlined tightly.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section" id="ablation">
+  <div class="container">
+    <h2 class="section-title">Ablation studies</h2>
+    <p class="section-sub">Kvasir-SEG test set, dense solver execution, FP32, seed 42, no test-time augmentation.</p>
+
+    <div class="two-col">
+      <div>
+        <h3 class="subsection-title">Component ablation</h3>
+        <div class="table-wrap">
+          <table class="results compact">
+            <thead>
+              <tr><th class="left">Variant</th><th>Dice ↑</th><th>IoU ↑</th><th>BF1 ↑</th><th>Occ. MAE ↓</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="left">w/o occupancy constraint</td><td>0.8864</td><td>0.8184</td><td>0.6868</td><td>5.557 × 10<sup>−3</sup></td></tr>
+              <tr><td class="left">w/o propagated carrier</td><td>0.8937</td><td>0.8270</td><td>0.7037</td><td>3.318 × 10<sup>−9</sup></td></tr>
+              <tr><td class="left">w/o adaptive blending</td><td>0.8961</td><td>0.8291</td><td>0.6966</td><td>9.404 × 10<sup>−8</sup></td></tr>
+              <tr class="ours"><td class="left">Full RoCU-Net</td><td><b>0.9028</b></td><td><b>0.8358</b></td><td><b>0.7101</b></td><td><b>3.085 × 10<sup>−9</sup></b></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Removing the occupancy constraint causes the largest drop (−1.64 Dice) and raises the conservation error by about six orders of magnitude.</p>
+      </div>
+
+      <div>
+        <h3 class="subsection-title">Upsampling-operator controls</h3>
+        <div class="table-wrap">
+          <table class="results compact">
+            <thead>
+              <tr><th class="left">Upsampling / allocation</th><th>Params ↓</th><th>Dice ↑</th><th>IoU ↑</th><th>BF1 ↑</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="left">Bilinear, sigmoid</td><td><b>273.9K</b></td><td>0.8952</td><td><u>0.8311</u></td><td>0.6997</td></tr>
+              <tr><td class="left">PixelShuffle, sigmoid</td><td>282.6K</td><td>0.8864</td><td>0.8184</td><td>0.6868</td></tr>
+              <tr><td class="left">CARAFE, sigmoid</td><td>393.5K</td><td><u>0.8989</u></td><td>0.8301</td><td><b>0.7271</b></td></tr>
+              <tr><td class="left">DySample-LP, sigmoid</td><td><u>276.1K</u></td><td>0.8909</td><td>0.8303</td><td>0.6997</td></tr>
+              <tr><td class="left">Direct head, no parent anchor</td><td>277.9K</td><td>0.8912</td><td>0.8234</td><td>0.6905</td></tr>
+              <tr class="ours"><td class="left">PixelShuffle, constrained solver</td><td>282.6K</td><td><b>0.9028</b></td><td><b>0.8358</b></td><td><u>0.7101</u></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">At an identical parameter count, the constrained solver improves Dice by 1.64 points over its unconstrained counterpart. CARAFE and DySample-LP denote these operators inserted into the RoCU-Net scaffold.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="related">
+  <div class="container narrow">
+    <h2 class="section-title">Related links</h2>
+    <div class="prose related">
+      <p><a href="https://arxiv.org/abs/2408.16886" target="_blank" rel="noopener">LV-UNet</a> pairs a pretrained MobileNetV3-Large encoder with re-parameterizable modules; it is the strongest lightweight baseline in our comparison, and its benchmark provides the baseline results above.</p>
+      <p><a href="https://arxiv.org/abs/2006.11392" target="_blank" rel="noopener">PraNet</a> refines polyp predictions with reverse attention driven by coarse region and boundary cues. RoCU-Net also reuses intermediate predictions, but gives the coarse prediction an explicit numerical role.</p>
+      <p><a href="https://arxiv.org/abs/1905.02188" target="_blank" rel="noopener">CARAFE</a> and <a href="https://arxiv.org/abs/2308.15085" target="_blank" rel="noopener">DySample</a> learn content-adaptive feature upsampling. We insert both into the RoCU-Net scaffold as upsampling-operator controls.</p>
+      <p><a href="https://arxiv.org/abs/2208.05424" target="_blank" rel="noopener">Hard-Constrained Deep Learning for Climate Downscaling</a> enforces conservation between coarse and fine physical fields through the output layer, a precedent for conservation-constrained resolution recovery.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section alt" id="bibtex">
+  <div class="container narrow">
+    <h2 class="section-title">BibTeX</h2>
+    <div class="code-block">
+      <button type="button" class="copy-btn" id="copy-bib" aria-label="Copy BibTeX">Copy</button>
+<pre><code id="bib-text">@inproceedings{NguyenICAART2027,
+  title = {{RoCU-Net}: Routed Occupancy-Constrained Upsampling for Lightweight Polyp Segmentation},
+  author = {Nguyen, Hai-Dang and Nguyen, Tran-Quoc Duy and Dang, Hoai-Thuong and Cao, Xuan-Nam},
+  booktitle = {International Conference on Agents and Artificial Intelligence (ICAART)},
+  year = {2027},
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container narrow center">
+    <div class="footer-icons">
+      <span class="icon-link disabled" title="Paper coming soon" aria-label="Paper coming soon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm0 2.5L17.5 8H14zM8 13h8v1.5H8zm0 3h8v1.5H8zm0-6h4v1.5H8z"/></svg>
+      </span>
+      <a class="icon-link" href="https://github.com/DanielNguyen-05/RoCU-Net" target="_blank" rel="noopener" aria-label="Code on GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.08 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>
+      </a>
+    </div>
+    <p>Contact: Hai-Dang Nguyen · nhdang231@clc.fitus.edu.vn</p>
+    <p class="muted">This website is licensed under a <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">Creative Commons Attribution-ShareAlike 4.0 International License</a>. The page design is adapted from the <a href="https://github.com/nerfies/nerfies.github.io" target="_blank" rel="noopener">Nerfies</a> project page.</p>
+  </div>
+</footer>
+
+</body>
+</html>

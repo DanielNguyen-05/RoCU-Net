@@ -1,0 +1,23 @@
+base_config: kvasir.yaml
+
+experiment:
+  name: rocu_cvc_colondb_transfer_seed42
+
+data:
+  root: dataset/CVC-ColonDB
+  image_dir: images
+  mask_dir: masks
+  # Optional: point to fixed train/val/test manifests to reuse an existing split.
+  # split_source: splits/cvc_colondb
+  train_ratio: 0.80
+  val_ratio: 0.10
+  test_ratio: 0.10
+
+# Initialised from the Kvasir-SEG model; train configs/kvasir.yaml first.
+training:
+  init_checkpoint: runs/rocu_kvasir_seed42/best.pt
+  test_after_training: true
+
+# Four-view flip test-time augmentation.
+inference:
+  tta: flip
